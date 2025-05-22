@@ -14,3 +14,9 @@ class User(BaseModel):
     display_name: Optional[str] = None
     role_id: str
     role: Optional[Role] = None
+
+
+
+class UserCreate(BaseModel):
+    display_name: str
+    role_id: Optional[str] = None 

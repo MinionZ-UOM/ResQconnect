@@ -7,6 +7,7 @@ from .api.deps import get_current_user
 from .api.requests import router as requests_router
 from .api.task import router as tasks_router
 from .api.resource import router as resources_router
+from .api.auth import router as auth_router
 
 from app.schemas.user import User 
 
@@ -25,7 +26,7 @@ if os.getenv("ENV", "development") == "development":
         return User(
             uid="savinu",
             email="dev@example.com",
-            role_id="first_responder",          # role you want to test
+            role_id="admin",          # role you want to test
             display_name="savinu",
             role=None,                
         )
@@ -36,7 +37,7 @@ if os.getenv("ENV", "development") == "development":
 app.include_router(requests_router)
 app.include_router(tasks_router)
 app.include_router(resources_router)
-
+app.include_router(auth_router)
 
 @app.get("/", tags=["health"])
 async def root():
