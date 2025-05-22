@@ -4,7 +4,6 @@ import os
 
 from .api.deps import get_current_user
 
-from .api.secure import router as secure_router
 from .api.requests import router as requests_router
 from .api.task import router as tasks_router
 from .api.resource import router as resources_router
@@ -34,7 +33,6 @@ if os.getenv("ENV", "development") == "development":
     app.dependency_overrides[get_current_user] = _fake_user
 
 
-app.include_router(secure_router)
 app.include_router(requests_router)
 app.include_router(tasks_router)
 app.include_router(resources_router)
