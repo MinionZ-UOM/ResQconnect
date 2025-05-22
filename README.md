@@ -33,7 +33,7 @@
      ```bash
      pip install -r requirements.txt
      ```
-5. **Add the frebase_cred.json after by creating a folder named secrets**
+5. **Add the frebase_cred.json by creating a folder named secrets**
    - This is required to access firestore from the backend
 
 6. **Run the Application**
