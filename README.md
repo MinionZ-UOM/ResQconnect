@@ -41,3 +41,24 @@
      ```bash
      python -m uvicorn app.main:app --reload
      ```
+# Frontend Setup Guide
+
+1. **Open Terminal and Navigate to the Frontend Directory**
+   - If you're not already in the `frontend` directory, run the following command:
+     ```bash
+     cd frontend
+     ```
+2. **Install Dependencies**
+   - Install the required npm packages by running:
+     ```bash
+     npm install react@18.2.0 react-dom@18.2.0
+     ```
+      - If you come accross any error try, :
+     ```bash
+     npm install --force
+     ```
+3. **Run the Application**
+   - Start the frontendd development server:
+     ```bash
+     npm run dev
+     ```
