@@ -35,6 +35,7 @@ def create_disaster(
 def list_disasters():
     return crud.list_disasters()
 
+
 @router.get("/{disaster_id}", response_model=DisasterResponse)
 def get_disaster(disaster_id: str):
     d = crud.get_disaster(disaster_id)
@@ -51,6 +52,22 @@ def join_disaster(
 ):
     crud.join_disaster(disaster_id, user.uid, role)
 
+
 @router.delete("/{disaster_id}/leave", status_code=204)
 def leave_disaster(disaster_id: str, user=Depends(get_current_user)):
     crud.leave_disaster(disaster_id, user.uid)
+
+
+@router.delete("/{disaster_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_disaster_endpoint(
+    disaster_id: str,
+    user=Depends(get_current_user),
+):
+    # only callers with the "disaster:delete" permission may delete
+    if not check_permission(user, "disaster:delete"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admins only"
+        )
+
+    crud.delete_disaster(disaster_id)

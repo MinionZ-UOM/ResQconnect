@@ -64,3 +64,22 @@ def leave_disaster(disaster_id: str, uid: str) -> None:
           .document(uid)
           .delete()
     )
+
+
+def delete_disaster(disaster_id: str) -> None:
+    """
+    Permanently remove the disaster document and its associated chat session.
+    """
+    # Reference to the disaster doc
+    doc_ref = db.collection("disasters").document(disaster_id)
+    doc = doc_ref.get()
+
+    if doc.exists:
+        data = doc.to_dict() or {}
+        # delete the chat session if present
+        chat_id = data.get("chat_session_id")
+        if chat_id:
+            db.collection("chatSessions").document(chat_id).delete()
+
+    # finally delete the disaster itself
+    doc_ref.delete()
