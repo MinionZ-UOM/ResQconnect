@@ -162,32 +162,50 @@ export default function DisasterPage() {
           {disasters.map((d) => (
             <div
               key={d.id}
-              className="bg-white rounded-lg shadow overflow-hidden"
+              className="
+                flex flex-col h-full 
+                bg-white rounded-2xl shadow-lg 
+                overflow-hidden 
+                transform transition 
+                hover:scale-105 hover:shadow-xl
+              "
             >
-              {d.image_urls.length > 0 && (
-                <Image
-                  src={d.image_urls[0]}
-                  alt={d.name}
-                  width={400}
-                  height={250}
-                  className="object-cover w-full h-48"
-                />
-              )}
-              <div className="p-4">
-                <h2 className="font-semibold text-lg">{d.name}</h2>
-                <p className="text-gray-600 mt-2">{d.description}</p>
+              {/* image */}
+              <div className="relative h-48 w-full">
+                {d.image_urls.length > 0 ? (
+                  <Image
+                    src={d.image_urls[0]}
+                    alt={d.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="bg-gray-200 w-full h-full" />
+                )}
+              </div>
+
+              {/* content */}
+              <div className="p-4 flex-1 flex flex-col">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {d.name}
+                </h2>
+                <p className="text-gray-600 mt-2 line-clamp-3">
+                  {d.description}
+                </p>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <button
-        onClick={() => setShowModal(true)}
-        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-      >
-        Report a New Disaster
-      </button>
+      <div className="flex justify-center mt-8">
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-8 py-4 bg-red-600 text-white text-lg font-semibold rounded-2xl hover:bg-red-700 transition-transform transform hover:scale-105"
+        >
+          Report a New Disaster
+        </button>
+      </div>
 
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <div className="p-6">
