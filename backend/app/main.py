@@ -8,6 +8,8 @@ from .api.requests import router as requests_router
 from .api.task import router as tasks_router
 from .api.resource import router as resources_router
 from .api.auth import router as auth_router
+from .api.disaster import router as disaster_router
+from .api.chat import router as chat_router
 
 from app.schemas.user import User 
 
@@ -21,23 +23,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.getenv("ENV", "development") == "development":
-    async def _fake_user() -> User:
-        return User(
-            uid="savinu",
-            email="dev@example.com",
-            role_id="admin",          # role you want to test
-            display_name="savinu",
-            role=None,                
-        )
+## Uncomment this ONLY when testing the backend Endpoints 
 
-    app.dependency_overrides[get_current_user] = _fake_user
+# if os.getenv("ENV", "development") == "development":
+#     async def _fake_user() -> User:
+#         return User(
+#             uid="savinu",
+#             email="dev@example.com",
+#             role_id="admin",          # role you want to test
+#             display_name="savinu",
+#             role=None,                
+#         )
+
+#     app.dependency_overrides[get_current_user] = _fake_user
 
 
 app.include_router(requests_router)
 app.include_router(tasks_router)
 app.include_router(resources_router)
 app.include_router(auth_router)
+app.include_router(disaster_router)
+app.include_router(chat_router)
+
 
 @app.get("/", tags=["health"])
 async def root():
