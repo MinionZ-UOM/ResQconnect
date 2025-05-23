@@ -31,7 +31,8 @@ import {
   Users,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types";
-import { useAuth } from "@/hooks/AuthProvider";         
+import { useAuth } from "@/hooks/AuthProvider";
+import { uiToBackend } from "@/lib/roles";
 
 interface MainSidebarProps {
   userRole: UserRole;
@@ -50,18 +51,21 @@ export function MainSidebar({
 }: MainSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();                          
-  const [notifications, setNotifications] = useState(3);
+  const { logout } = useAuth();
+  const [notifications] = useState(3);
 
-  /* ───────────────────────── route definitions ──────────────────────── */
+  // derive the slug from  backend key, e.g. "first_responder" → "first-responder"
+  const backendKey = uiToBackend[userRole];
+  const roleSlug = backendKey.replace(/_/g, "-");
+
   const baseRoutes = [
     {
       title: "Home",
+      icon: Home,
       href:
         userRole === "Admin"
           ? "/admin/dashboard"
-          : `/dashboard/${userRole.toLowerCase()}`,
-      icon: Home,
+          : `/dashboard/${roleSlug}`,
     },
   ];
 
@@ -69,98 +73,72 @@ export function MainSidebar({
     Responder: [
       {
         title: "Tasks",
-        href: `/dashboard/responder/tasks${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: CheckSquare,
       },
       {
         title: "Requests",
-        href: `/dashboard/responder/requests${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/requests${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Inbox,
         badge: notifications,
       },
       {
         title: "Map View",
-        href: `/dashboard/responder/map${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/responder/communication${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: MessageSquare,
       },
       {
         title: "Resources",
-        href: `/dashboard/responder/resources${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/resources${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Package,
       },
     ],
     Volunteer: [
       {
         title: "My Tasks",
-        href: `/dashboard/volunteer/tasks${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: CheckSquare,
       },
       {
         title: "Report Observation",
-        href: `/dashboard/volunteer/report${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/report${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: FileText,
       },
       {
         title: "Map View",
-        href: `/dashboard/volunteer/map${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/volunteer/communication${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: MessageSquare,
       },
     ],
     Affected: [
       {
         title: "My Requests",
-        href: `/dashboard/affected/requests${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/requests${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Inbox,
       },
       {
         title: "New Request",
-        href: `/dashboard/affected/new-request${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: AlertTriangle,
       },
       {
         title: "Map View",
-        href: `/dashboard/affected/map${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/affected/communication${
-          disasterId ? `?disasterId=${disasterId}` : ""
-        }`,
+        href: `/dashboard/${roleSlug}/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: MessageSquare,
       },
     ],
@@ -177,17 +155,20 @@ export function MainSidebar({
       { title: "Resources", href: "/admin/resources", icon: Package },
       { title: "Users", href: "/admin/users", icon: Users },
       { title: "Alerts", href: "/admin/alerts", icon: Bell },
-      { title: "Communication", href: "/admin/communication", icon: MessageSquare },
+      {
+        title: "Communication",
+        href: "/admin/communication",
+        icon: MessageSquare,
+      },
       { title: "Settings", href: "/admin/settings", icon: Settings },
     ],
   } as const;
 
   const routes = [...baseRoutes, ...(roleRoutes[userRole] || [])];
 
-  /* ────────────────────────── logout handler ────────────────────────── */
   const handleLogout = async () => {
-    await logout();                 // sign out of Firebase & clear context
-    router.push("/auth/login");    
+    await logout();
+    router.push("/auth/login");
   };
 
   return (
@@ -241,7 +222,6 @@ export function MainSidebar({
             </span>
           </div>
 
-          {/* logout button */}
           <Button
             variant="ghost"
             size="icon"
