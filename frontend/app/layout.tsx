@@ -1,30 +1,21 @@
-"use client"                    // ← now this is a client component
-import React from "react"
-import { useTheme, ThemeProvider } from "next-themes"
-import { Inter } from "next/font/google"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import "./globals.css"
+"use client";
 
-const inter = Inter({ subsets: ["latin"] })
+import { ThemeProvider } from "next-themes";
+import { Inter } from "next/font/google";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AuthProvider } from "@/hooks/AuthProvider";
+import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const { theme, resolvedTheme } = useTheme()
-  // decide which class to apply
-  const htmlClass = theme === "system" ? resolvedTheme : theme
-  // match CSS color-scheme
-  const colorScheme = htmlClass === "dark" ? "dark" : "light"
-
   return (
-    <html
-      lang="en"
-      className={htmlClass}
-      style={{ colorScheme }}
-    >
-      <head />  
+    <html lang="en" suppressHydrationWarning>
+      <head />
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
@@ -32,9 +23,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider>{children}</SidebarProvider>
+          <AuthProvider>
+            <SidebarProvider>{children}</SidebarProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
