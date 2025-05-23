@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
             </Select>
 
             <Button asChild>
-              <a href="/admin/disasters/new">Register New Disaster</a>
+              <a href="/admin/disasters">Register New Disaster</a>
             </Button>
           </div>
         </div>
