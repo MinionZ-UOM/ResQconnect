@@ -4,13 +4,18 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { AlertTriangle, Eye, EyeOff } from "lucide-react"
+
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
+import { auth } from "@/lib/firebaseClient"
+import { callApi } from "@/lib/api"
+import { uiToBackend, type BackendRole } from "@/lib/roles"
 import type { UserRole } from "@/lib/types"
 
 export default function SignupPage() {
@@ -33,30 +38,52 @@ export default function SignupPage() {
     e.preventDefault()
     setError("")
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       return
     }
 
     setIsLoading(true)
-
     try {
-      // In a real app, this would be an API call to register
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 1. Firebase Auth account creation
+      const { user } = await createUserWithEmailAndPassword(auth, email, password)
+      if (name) await updateProfile(user, { displayName: name })
 
-      // Mock successful registration
-      console.log("Registering with:", { name, email, password, role })
+      try {
+        // 2. Tell FastAPI to create Firestore user doc + set custom claim
+        await callApi("users/register", "POST", {
+          display_name: name,
+          role_id: uiToBackend[role as keyof typeof uiToBackend],
+        })
 
-      // Redirect based on role
-      if (role === "Admin") {
-        router.push("/admin/dashboard")
-      } else {
-        router.push(`/dashboard/${role?.toLowerCase()}`)
+        // 3. Fetch profile (includes canonical role)
+        const profile = await callApi<{ role_id: BackendRole }>("users/me")
+        console.log("Signup profile response:", profile)
+
+        // 4. Route
+        profile.role_id === "admin"
+          ? router.push("/admin/dashboard")
+          : router.push(`/dashboard/${profile.role_id.replace("_", "-")}`)
+      } catch (apiErr) {
+        console.error("API error:", apiErr)
+        // If backend registration fails, we should delete the Firebase user
+        try {
+          await user.delete()
+        } catch (deleteErr) {
+          console.error("Could not delete Firebase user after failed registration:", deleteErr)
+        }
+        setError("Error registering with the backend. Please try again.")
       }
-    } catch (error) {
-      console.error("Registration error:", error)
-      setError("Error creating account. Please try again.")
+    } catch (err: any) {
+      console.error("Firebase error:", err)
+      // Provide more specific error messages based on Firebase error codes
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already registered. Please login instead.")
+      } else if (err.code === "auth/weak-password") {
+        setError("Password is too weak. Please use a stronger password.")
+      } else {
+        setError(`Error creating account: ${err.message}`)
+      }
     } finally {
       setIsLoading(false)
     }
