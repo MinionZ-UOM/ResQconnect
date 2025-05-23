@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { usePathname } from "next/navigation"
-import Link from "next/link"
+import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Sidebar,
   SidebarContent,
@@ -12,172 +12,183 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  AlertTriangle,
+  BarChart,
+  Bell,
+  CheckSquare,
+  FileText,
   Home,
+  Inbox,
+  LogOut,
   Map,
   MessageSquare,
   Package,
   Settings,
   Users,
-  LogOut,
-  AlertTriangle,
-  Inbox,
-  Bell,
-  CheckSquare,
-  FileText,
-  BarChart,
-} from "lucide-react"
-import type { UserRole } from "@/lib/types"
+} from "lucide-react";
+import type { UserRole } from "@/lib/types";
+import { useAuth } from "@/hooks/AuthProvider";         
 
 interface MainSidebarProps {
-  userRole: UserRole
-  userName: string
-  userInitials: string
-  userAvatar?: string
-  disasterId?: string
+  userRole: UserRole;
+  userName: string;
+  userInitials: string;
+  userAvatar?: string;
+  disasterId?: string;
 }
 
-export function MainSidebar({ userRole, userName, userInitials, userAvatar, disasterId }: MainSidebarProps) {
-  const pathname = usePathname()
-  const [notifications, setNotifications] = useState(3)
+export function MainSidebar({
+  userRole,
+  userName,
+  userInitials,
+  userAvatar,
+  disasterId,
+}: MainSidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();                          
+  const [notifications, setNotifications] = useState(3);
 
-  // Base routes for all users
+  /* ───────────────────────── route definitions ──────────────────────── */
   const baseRoutes = [
     {
       title: "Home",
-      href: userRole === "Admin" ? "/admin/dashboard" : `/dashboard/${userRole.toLowerCase()}`,
+      href:
+        userRole === "Admin"
+          ? "/admin/dashboard"
+          : `/dashboard/${userRole.toLowerCase()}`,
       icon: Home,
     },
-  ]
+  ];
 
-  // Role-specific routes
   const roleRoutes = {
     Responder: [
       {
         title: "Tasks",
-        href: `/dashboard/responder/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/tasks${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: CheckSquare,
       },
       {
         title: "Requests",
-        href: `/dashboard/responder/requests${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/requests${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Inbox,
         badge: notifications,
       },
       {
         title: "Map View",
-        href: `/dashboard/responder/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/map${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/responder/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/communication${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: MessageSquare,
       },
       {
         title: "Resources",
-        href: `/dashboard/responder/resources${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/resources${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Package,
       },
     ],
     Volunteer: [
       {
         title: "My Tasks",
-        href: `/dashboard/volunteer/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/volunteer/tasks${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: CheckSquare,
       },
       {
         title: "Report Observation",
-        href: `/dashboard/volunteer/report${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/volunteer/report${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: FileText,
       },
       {
         title: "Map View",
-        href: `/dashboard/volunteer/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/volunteer/map${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/volunteer/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/volunteer/communication${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: MessageSquare,
       },
     ],
     Affected: [
       {
         title: "My Requests",
-        href: `/dashboard/affected/requests${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/affected/requests${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Inbox,
       },
       {
         title: "New Request",
-        href: `/dashboard/affected/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/affected/new-request${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: AlertTriangle,
       },
       {
         title: "Map View",
-        href: `/dashboard/affected/map${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/affected/map${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: Map,
       },
       {
         title: "Communication",
-        href: `/dashboard/affected/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/affected/communication${
+          disasterId ? `?disasterId=${disasterId}` : ""
+        }`,
         icon: MessageSquare,
       },
     ],
     Admin: [
-      {
-        title: "Dashboard",
-        href: "/admin/dashboard",
-        icon: BarChart,
-      },
-      {
-        title: "Disasters",
-        href: "/admin/disasters",
-        icon: AlertTriangle,
-      },
+      { title: "Dashboard", href: "/admin/dashboard", icon: BarChart },
+      { title: "Disasters", href: "/admin/disasters", icon: AlertTriangle },
       {
         title: "Requests",
         href: "/admin/requests",
         icon: Inbox,
         badge: notifications,
       },
-      {
-        title: "Tasks",
-        href: "/admin/tasks",
-        icon: CheckSquare,
-      },
-      {
-        title: "Resources",
-        href: "/admin/resources",
-        icon: Package,
-      },
-      {
-        title: "Users",
-        href: "/admin/users",
-        icon: Users,
-      },
-      {
-        title: "Alerts",
-        href: "/admin/alerts",
-        icon: Bell,
-      },
-      {
-        title: "Communication",
-        href: "/admin/communication",
-        icon: MessageSquare,
-      },
-      {
-        title: "Settings",
-        href: "/admin/settings",
-        icon: Settings,
-      },
+      { title: "Tasks", href: "/admin/tasks", icon: CheckSquare },
+      { title: "Resources", href: "/admin/resources", icon: Package },
+      { title: "Users", href: "/admin/users", icon: Users },
+      { title: "Alerts", href: "/admin/alerts", icon: Bell },
+      { title: "Communication", href: "/admin/communication", icon: MessageSquare },
+      { title: "Settings", href: "/admin/settings", icon: Settings },
     ],
-  }
+  } as const;
 
-  const routes = [...baseRoutes, ...(roleRoutes[userRole] || [])]
+  const routes = [...baseRoutes, ...(roleRoutes[userRole] || [])];
+
+  /* ────────────────────────── logout handler ────────────────────────── */
+  const handleLogout = async () => {
+    await logout();                 // sign out of Firebase & clear context
+    router.push("/auth/login");    
+  };
 
   return (
     <Sidebar>
@@ -197,7 +208,11 @@ export function MainSidebar({ userRole, userName, userInitials, userAvatar, disa
         <SidebarMenu>
           {routes.map((route) => (
             <SidebarMenuItem key={route.href}>
-              <SidebarMenuButton asChild isActive={pathname === route.href} tooltip={route.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === route.href}
+                tooltip={route.title}
+              >
                 <Link href={route.href}>
                   <route.icon className="h-5 w-5" />
                   <span>{route.title}</span>
@@ -221,15 +236,23 @@ export function MainSidebar({ userRole, userName, userInitials, userAvatar, disa
           </Avatar>
           <div className="flex flex-col">
             <span className="text-sm font-medium">{userName}</span>
-            <span className="text-xs text-muted-foreground capitalize">{userRole}</span>
+            <span className="text-xs text-muted-foreground capitalize">
+              {userRole}
+            </span>
           </div>
-          <Button variant="ghost" size="icon" className="ml-auto" asChild>
-            <Link href="/">
-              <LogOut className="h-5 w-5" />
-            </Link>
+
+          {/* logout button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto"
+            onClick={handleLogout}
+            title="Sign out"
+          >
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
