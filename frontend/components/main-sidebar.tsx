@@ -54,7 +54,7 @@ export function MainSidebar({
   const { logout } = useAuth();
   const [notifications] = useState(3);
 
-  // derive the slug from  backend key, e.g. "first_responder" → "first-responder"
+  // derive the slug from backend key, e.g. "first_responder" → "first-responder"
   const backendKey = uiToBackend[userRole];
   const roleSlug = backendKey.replace(/_/g, "-");
 
@@ -188,7 +188,7 @@ export function MainSidebar({
       <SidebarContent>
         <SidebarMenu>
           {routes.map((route) => (
-            <SidebarMenuItem key={route.href}>
+            <SidebarMenuItem key={`${route.href}-${route.title}`}>
               <SidebarMenuButton
                 asChild
                 isActive={pathname === route.href}
