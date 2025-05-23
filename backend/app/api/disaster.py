@@ -30,7 +30,8 @@ def create_disaster(
     return crud.create_disaster(payload, admin_uid=user.uid)
 
 
-@router.get("/", response_model=List[DisasterResponse])
+@router.get("", response_model=List[DisasterResponse])
+@router.get("/", include_in_schema=False, response_model=List[DisasterResponse])
 def list_disasters():
     return crud.list_disasters()
 
