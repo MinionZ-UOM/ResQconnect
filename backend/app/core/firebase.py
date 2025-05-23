@@ -62,4 +62,5 @@ def verify_token(id_token: str, check_revoked: bool = False) -> Dict[str, Any]:
 
     Raises firebase_admin.AuthError for expired / invalid tokens.
     """
+    get_app()
     return get_auth().verify_id_token(id_token, check_revoked=check_revoked)

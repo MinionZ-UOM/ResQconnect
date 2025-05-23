@@ -3,47 +3,48 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { Eye, EyeOff, AlertTriangle } from "lucide-react"
+import Link from "next/link"
+import { auth } from "@/lib/firebaseClient"
+import { callApi } from "@/lib/api"
+import type { BackendRole } from "@/lib/roles"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Link from "next/link"
-import { AlertTriangle, Eye, EyeOff } from "lucide-react"
-import type { UserRole } from "@/lib/types"
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const roleParam = searchParams.get("role") as UserRole | null
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [role, setRole] = useState<UserRole | "">((roleParam as UserRole) || "")
-  const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-
     try {
-      // In a real app, this would be an API call to authenticate
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Sign in with Firebase
+      await signInWithEmailAndPassword(auth, email, password)
 
-      // Mock successful login
-      console.log("Logging in with:", { email, password, role })
+      // Use auth/me endpoint for consistency with signup page
+      const profile = await callApi<{ role_id: BackendRole }>("users/me")
+      console.log("Login profile response:", profile)
+
+      const role = profile.role_id.toLowerCase();
+      console.log("User role:", role)
 
       // Redirect based on role
-      if (role === "Admin") {
-        router.push("/admin/dashboard")
-      } else {
-        router.push(`/dashboard/${role?.toLowerCase()}`)
-      }
-    } catch (error) {
-      console.error("Login error:", error)
+      role === "admin"
+        ? router.push("/admin/dashboard")
+        : router.push(`/dashboard/${role}`);
+    } catch (err) {
+      console.error("Login error:", err)
       setError("Invalid email or password. Please try again.")
     } finally {
       setIsLoading(false)
@@ -115,25 +116,6 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
-                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select your role
-                  </option>
-                  <option value="Responder">First Responder</option>
-                  <option value="Volunteer">Volunteer</option>
-                  <option value="Affected">Affected Individual</option>
-                  <option value="Admin">Government Help Centre</option>
-                </select>
-              </div>
             </CardContent>
 
             <CardFooter className="flex flex-col space-y-4">
@@ -144,7 +126,7 @@ export default function LoginPage() {
               <div className="text-center text-sm">
                 Don't have an account?{" "}
                 <Link
-                  href={`/auth/signup${roleParam ? `?role=${roleParam}` : ""}`}
+                  href="/auth/signup"
                   className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                 >
                   Sign up

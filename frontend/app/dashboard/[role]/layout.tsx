@@ -1,25 +1,33 @@
+// frontend/app/dashboard/[role]/layout.tsx
 import type React from "react"
 import { MainSidebar } from "@/components/main-sidebar"
 import { SidebarInset } from "@/components/ui/sidebar"
 import type { UserRole } from "@/lib/types"
+import { uiToBackend } from "@/lib/roles"
 import { notFound } from "next/navigation"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  params: {
-    role: string
-  }
+  params: Promise<{ role: string }>
 }
 
-export default function DashboardLayout({ children, params }: DashboardLayoutProps) {
-  // Validate role
-  const validRoles = ["responder", "volunteer", "affected"]
-  if (!validRoles.includes(params.role)) {
+const backendToUI = Object.fromEntries(
+  Object.entries(uiToBackend).map(([ui, backend]) => [backend, ui])
+) as Record<string, UserRole>
+
+export default async function DashboardLayout({
+  children,
+  params,
+}: DashboardLayoutProps) {
+  const { role: slug } = await params
+  // hyphens back to underscores
+  const backendRole = slug.replace(/-/g, "_")
+  // validate
+  if (!(backendRole in backendToUI)) {
     notFound()
   }
 
-  // Mock user data - in a real app, this would come from authentication
-  const userRole = (params.role.charAt(0).toUpperCase() + params.role.slice(1)) as UserRole
+  const userRole = backendToUI[backendRole]
   const userName = `Test ${userRole}`
   const userInitials = userName
     .split(" ")
@@ -28,7 +36,11 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
-      <MainSidebar userRole={userRole} userName={userName} userInitials={userInitials} />
+      <MainSidebar
+        userRole={userRole}
+        userName={userName}
+        userInitials={userInitials}
+      />
 
       <SidebarInset>
         <div className="h-full overflow-auto">{children}</div>

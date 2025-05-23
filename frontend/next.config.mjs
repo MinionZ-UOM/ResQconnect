@@ -9,6 +9,18 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
 
-export default nextConfig
+  // ────────────────────────────────────────────────────────────────
+  // proxy any /api/* request from the browser to FastAPI :8000
+  // ────────────────────────────────────────────────────────────────
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',                 // what the browser hits
+        destination: 'http://localhost:8000/:path*', // FastAPI
+      },
+    ];
+  },
+};
+
+export default nextConfig;
