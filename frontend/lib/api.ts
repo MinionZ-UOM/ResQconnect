@@ -5,13 +5,14 @@ export async function callApi<T>(
   method: "GET" | "POST" = "GET",
   body?: unknown,
 ): Promise<T> {
-  const token = await auth.currentUser?.getIdToken();
+  const user = auth.currentUser;
+  const token = user ? await user.getIdToken() : undefined;
 
-  const res = await fetch(`/api/${path}`, {      // ← same-origin call
+  const res = await fetch(`/api/${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
