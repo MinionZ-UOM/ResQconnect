@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { callApi } from "@/lib/api";
+import { Trash2 } from "lucide-react"; // proper trash icon
 
 type Disaster = {
   id: string;
@@ -64,6 +65,9 @@ export default function DisasterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // delete-confirm state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   // fetch disasters
   const loadDisasters = async () => {
     setLoading(true);
@@ -80,19 +84,29 @@ export default function DisasterPage() {
     loadDisasters();
   }, []);
 
+  // actual delete call
+  const handleDelete = async (id: string) => {
+    try {
+      await callApi(`disasters/${id}`, "DELETE");
+      await loadDisasters();
+    } catch (e) {
+      console.error("Failed to delete disaster", e);
+    }
+  };
+
   // form handlers
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    setForm(f => ({ ...f, [name]: value }));
   };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    setForm((f) => ({ ...f, images: files }));
-    setPreviews(files.map((f) => URL.createObjectURL(f)));
+    setForm(f => ({ ...f, images: files }));
+    setPreviews(files.map(f => URL.createObjectURL(f)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,17 +173,26 @@ export default function DisasterPage() {
         <p>No disasters reported yet.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {disasters.map((d) => (
+          {disasters.map(d => (
             <div
               key={d.id}
               className="
-                flex flex-col h-full 
-                bg-white rounded-2xl shadow-lg 
-                overflow-hidden 
-                transform transition 
+                relative flex flex-col h-full
+                bg-white rounded-2xl shadow-lg
+                overflow-hidden
+                transform transition
                 hover:scale-105 hover:shadow-xl
               "
             >
+              {/* trash icon */}
+              <button
+                onClick={() => setConfirmDeleteId(d.id)}
+                aria-label="Delete incident"
+                className="absolute top-2 right-2 z-10"
+              >
+                <Trash2 className="w-6 h-6 text-gray-500 hover:text-red-600" />
+              </button>
+
               {/* image */}
               <div className="relative h-48 w-full">
                 {d.image_urls.length > 0 ? (
@@ -198,6 +221,7 @@ export default function DisasterPage() {
         </div>
       )}
 
+      {/* centered, red report button */}
       <div className="flex justify-center mt-8">
         <button
           onClick={() => setShowModal(true)}
@@ -207,6 +231,7 @@ export default function DisasterPage() {
         </button>
       </div>
 
+      {/* create / report modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <div className="p-6">
           <h3 className="text-lg font-medium leading-6 mb-4">
@@ -227,113 +252,37 @@ export default function DisasterPage() {
                 placeholder="e.g. Central Valley Flood 2025"
               />
             </div>
-
-            <div>
-              <label htmlFor="description" className="block mb-1 font-medium">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                required
-                value={form.description}
-                onChange={handleChange}
-                rows={4}
-                className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                placeholder="Brief overview…"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="lat" className="block mb-1 font-medium">
-                  Latitude
-                </label>
-                <input
-                  id="lat"
-                  name="lat"
-                  type="number"
-                  step="any"
-                  required
-                  min={-90}
-                  max={90}
-                  value={form.lat}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                  placeholder="36.7783"
-                />
-              </div>
-              <div>
-                <label htmlFor="lng" className="block mb-1 font-medium">
-                  Longitude
-                </label>
-                <input
-                  id="lng"
-                  name="lng"
-                  type="number"
-                  step="any"
-                  required
-                  min={-180}
-                  max={180}
-                  value={form.lng}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                  placeholder="-119.4179"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="images" className="block mb-1 font-medium">
-                Images (optional)
-              </label>
-              <input
-                id="images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFiles}
-                className="block w-full text-sm text-gray-600 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-white"
-              />
-              {previews.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-4">
-                  {previews.map((src, i) => (
-                    <Image
-                      key={i}
-                      src={src}
-                      alt={`preview-${i}`}
-                      width={100}
-                      height={100}
-                      className="rounded-lg border object-cover"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <div className="rounded-lg bg-red-100 text-red-700 px-4 py-2">
-                {error}
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60"
-              >
-                {submitting ? "Creating…" : "Create"}
-              </button>
-            </div>
           </form>
+        </div>
+      </Modal>
+      <Modal
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+      >
+        <div className="p-6 text-center">
+          <h3 className="text-lg font-semibold mb-4">
+            Are you sure?
+          </h3>
+          <p className="mb-6">
+            This will permanently delete the incident.
+          </p>
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => {
+                if (confirmDeleteId) handleDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            >
+              Yes, delete
+            </button>
+            <button
+              onClick={() => setConfirmDeleteId(null)}
+              className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </Modal>
     </div>
