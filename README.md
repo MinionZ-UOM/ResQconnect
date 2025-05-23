@@ -73,6 +73,5 @@ Create a `.env.local` file in the `frontend` directory and define the following 
       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket_here
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id_here
       NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id_here
-   
       NEXT_PUBLIC_API=http://localhost:8000
      ```
