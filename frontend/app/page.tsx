@@ -31,12 +31,12 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <RoleCard
               title="First Responders"
-              description="Receive prioritized tasks and coordinate resource deployment"
+              description="Receive prioritized tasks and coordinate resource deployment."
               icon={<Shield className="h-12 w-12 text-red-500" />}
             />
             <RoleCard
               title="Volunteers"
-              description="Assist with relief tasks, field updates, and local support during emergencies"
+              description="Assist with relief tasks, field updates, and local support during emergencies."
               icon={<Users className="h-12 w-12 text-green-500" />}
             />
             <RoleCard
@@ -46,7 +46,7 @@ export default function Home() {
             />
             <RoleCard
               title="Government Help Centre"
-              description="Administer the platform and oversee coordination"
+              description="Administer the platform and oversee coordination."
               icon={<Building className="h-12 w-12 text-purple-500" />}
             />
           </div>
