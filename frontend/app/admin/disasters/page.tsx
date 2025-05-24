@@ -1,10 +1,12 @@
+// app/dashboard/affected/disasters/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { callApi } from "@/lib/api";
 import { Trash2 } from "lucide-react";
+import { callApi } from "@/lib/api";
+import { imagekit } from "@/lib/imagekit";
 
 type Disaster = {
   id: string;
@@ -12,6 +14,9 @@ type Disaster = {
   description: string;
   location: { lat: number; lng: number };
   image_urls: string[];
+  created_at: string;
+  created_by: string;
+  chat_session_id: string;
 };
 
 type FormState = {
@@ -35,17 +40,56 @@ function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-3xl w-full overflow-auto">
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-3xl w-full overflow-auto p-6">
         {children}
       </div>
     </div>
   );
 }
 
+async function uploadToImageKit(file: File): Promise<string> {
+  console.log("🚀 uploadToImageKit start for file:", file.name);
+  let authRes;
+  try {
+    authRes = await fetch("/api/imagekit/auth");
+  } catch (err) {
+    console.error("⚠️ Failed auth call:", err);
+    throw err;
+  }
+  if (!authRes.ok) {
+    const text = await authRes.text();
+    console.error("❌ Auth error body:", text);
+    throw new Error(`Auth failed: ${authRes.status}`);
+  }
+  const authData = await authRes.json();
+
+  let res;
+  try {
+    res = await imagekit.upload({
+      file,
+      fileName: file.name,
+      folder: "/disasters",
+      token: authData.token,
+      signature: authData.signature,
+      expire: authData.expire,
+    });
+  } catch (err) {
+    console.error("❌ imagekit.upload threw:", err);
+    throw err;
+  }
+  if (!res.url || typeof res.url !== "string") {
+    console.error("❌ No valid URL in upload response");
+    throw new Error("ImageKit upload did not return a valid URL");
+  }
+  return res.url;
+}
+
 export default function DisasterPage() {
   const router = useRouter();
+
   const [disasters, setDisasters] = useState<Disaster[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -65,30 +109,39 @@ export default function DisasterPage() {
       const data = await callApi<Disaster[]>("disasters/", "GET");
       setDisasters(data);
     } catch (e) {
-      console.error(e);
+      console.error("Failed to load disasters", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     loadDisasters();
   }, []);
 
+  // OPTIMISTIC DELETE + IGNORE EMPTY-JSON ERRORS
   const handleDelete = async (id: string) => {
+    setConfirmDeleteId(null);
+    const previous = disasters;
+    setDisasters(previous.filter((d) => d.id !== id));
+
     try {
       await callApi(`disasters/${id}`, "DELETE");
     } catch (err: any) {
-      if (!(err instanceof SyntaxError && err.message.includes("Unexpected end of JSON input"))) {
-        console.error(err);
-        return;
+      // If the error is JSON parse on empty body, treat as success
+      if (err instanceof SyntaxError && /JSON/.test(err.message)) {
+        console.warn("Delete returned no JSON, assuming success");
+      } else {
+        console.error("Delete failed, rolling back", err);
+        setDisasters(previous);
       }
     }
-    setDisasters((prev) => prev.filter((d) => d.id !== id));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,43 +155,39 @@ export default function DisasterPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+
     const latNum = parseFloat(form.lat);
     const lngNum = parseFloat(form.lng);
     if (isNaN(latNum) || latNum < -90 || latNum > 90) {
-      setError("Latitude must be between -90 and 90.");
+      setError("Latitude must be between -90 and 90");
       setSubmitting(false);
       return;
     }
     if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
-      setError("Longitude must be between -180 and 180.");
+      setError("Longitude must be between -180 and 180");
       setSubmitting(false);
       return;
     }
+
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of form.images) {
-        const url = await uploadToFirebase(file);
-        uploadedUrls.push(url);
-      }
+      const image_urls = await Promise.all(
+        form.images.map((file) => uploadToImageKit(file))
+      );
+
       await callApi("disasters/", "POST", {
-        name: form.name,
+        name:        form.name,
         description: form.description,
-        location: { lat: latNum, lng: lngNum },
-        image_urls: uploadedUrls,
+        location:    { lat: latNum, lng: lngNum },
+        image_urls,
       });
+
       setShowModal(false);
       setForm({ name: "", description: "", lat: "", lng: "", images: [] });
       setPreviews([]);
-      await loadDisasters();
+      loadDisasters();
     } catch (err: any) {
-      let msg = err.message;
-      try {
-        const json = JSON.parse(err.message);
-        if (Array.isArray(json.detail)) {
-          msg = json.detail.map((d: any) => `${d.loc.slice(-1)[0]}: ${d.msg}`).join("; ");
-        }
-      } catch {}
-      setError(msg);
+      console.error("Create failed", err);
+      setError(err.message || "Create failed");
     } finally {
       setSubmitting(false);
     }
@@ -147,163 +196,189 @@ export default function DisasterPage() {
   return (
     <div className="mx-auto max-w-5xl py-12 px-4">
       <h1 className="text-2xl font-semibold mb-6">Disasters</h1>
+
       {loading ? (
         <p>Loading…</p>
       ) : disasters.length === 0 ? (
         <p>No disasters reported yet.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {disasters.map((d) => (
-            <div
-              key={d.id}
-              className="relative flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden transform transition hover:scale-105 hover:shadow-xl"
-            >
-              <button onClick={() => setConfirmDeleteId(d.id)} className="absolute top-2 right-2 z-10">
-                <Trash2 className="w-6 h-6 text-gray-500 hover:text-red-600" />
-              </button>
-              <div className="relative h-48 w-full">
-                {d.image_urls.length > 0 ? (
-                  <Image src={d.image_urls[0]} alt={d.name} fill className="object-cover" />
-                ) : (
-                  <div className="bg-gray-200 w-full h-full" />
-                )}
+          {disasters.map((d) => {
+            const primaryImage =
+              d.image_urls.find((u) => u?.trim()) || null;
+
+            return (
+              <div
+                key={d.id}
+                className="relative flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden hover:scale-105 transition"
+              >
+                <button
+                  onClick={() => setConfirmDeleteId(d.id)}
+                  className="absolute top-2 right-2 z-10"
+                >
+                  <Trash2 className="w-6 h-6 text-gray-500 hover:text-red-600" />
+                </button>
+                <div className="relative h-48 w-full">
+                  {primaryImage ? (
+                    <Image
+                      src={primaryImage}
+                      alt={d.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="bg-gray-200 w-full h-full flex items-center justify-center text-gray-500">
+                      No Image
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {d.name}
+                  </h2>
+                  <p className="text-gray-600 mt-2 line-clamp-3">
+                    {d.description}
+                  </p>
+                </div>
               </div>
-              <div className="p-4 flex-1 flex flex-col">
-                <h2 className="text-lg font-semibold text-gray-800">{d.name}</h2>
-                <p className="text-gray-600 mt-2 line-clamp-3">{d.description}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      <div className="flex justify-center mt-8">
+
+      <div className="flex justify-center">
         <button
           onClick={() => setShowModal(true)}
-          className="px-8 py-4 bg-red-600 text-white text-lg font-semibold rounded-2xl hover:bg-red-700 transition-transform transform hover:scale-105"
+          className="px-8 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
         >
           Report a New Disaster
         </button>
       </div>
+
       <Modal open={showModal} onClose={() => setShowModal(false)}>
-        <div className="p-6">
-          <h3 className="text-lg font-medium leading-6 mb-4">Register New Disaster</h3>
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <h3 className="text-lg font-medium mb-4">Register New Disaster</h3>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block mb-1 font-medium">Name</label>
+            <input
+              name="name"
+              required
+              value={form.name}
+              onChange={handleChange}
+              className="w-full rounded-lg border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Description</label>
+            <textarea
+              name="description"
+              required
+              value={form.description}
+              onChange={handleChange}
+              rows={4}
+              className="w-full rounded-lg border px-3 py-2"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="name" className="block mb-1 font-medium">Name</label>
+              <label className="block mb-1 font-medium">Latitude</label>
               <input
-                id="name"
-                name="name"
+                name="lat"
+                type="number"
+                step="any"
                 required
-                value={form.name}
+                min={-90}
+                max={90}
+                value={form.lat}
                 onChange={handleChange}
-                className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                placeholder="e.g. Central Valley Flood 2025"
+                className="w-full rounded-lg border px-3 py-2"
               />
             </div>
             <div>
-              <label htmlFor="description" className="block mb-1 font-medium">Description</label>
-              <textarea
-                id="description"
-                name="description"
-                required
-                value={form.description}
-                onChange={handleChange}
-                rows={4}
-                className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                placeholder="Brief overview…"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="lat" className="block mb-1 font-medium">Latitude</label>
-                <input
-                  id="lat"
-                  name="lat"
-                  type="number"
-                  step="any"
-                  required
-                  min={-90}
-                  max={90}
-                  value={form.lat}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                  placeholder="36.7783"
-                />
-              </div>
-              <div>
-                <label htmlFor="lng" className="block mb-1 font-medium">Longitude</label>
-                <input
-                  id="lng"
-                  name="lng"
-                  type="number"
-                  step="any"
-                  required
-                  min={-180}
-                  max={180}
-                  value={form.lng}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border px-3 py-2 focus:ring-2 focus:ring-primary"
-                  placeholder="-119.4179"
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="images" className="block mb-1 font-medium">Images (optional)</label>
+              <label className="block mb-1 font-medium">Longitude</label>
               <input
-                id="images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFiles}
-                className="block w-full text-sm text-gray-600 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-white"
+                name="lng"
+                type="number"
+                step="any"
+                required
+                min={-180}
+                max={180}
+                value={form.lng}
+                onChange={handleChange}
+                className="w-full rounded-lg border px-3 py-2"
               />
-              {previews.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-4">
-                  {previews.map((src, i) => (
-                    <Image
-                      key={i}
-                      src={src}
-                      alt={`preview-${i}`}
-                      width={100}
-                      height={100}
-                      className="rounded-lg border object-cover"
-                    />
-                  ))}
-                </div>
-              )}
             </div>
-            {error && <div className="rounded-lg bg-red-100 text-red-700 px-4 py-2">{error}</div>}
-            <div className="flex justify-end space-x-4">
-              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60">
-                {submitting ? "Creating…" : "Create"}
-              </button>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Images (optional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFiles}
+              className="block w-full text-sm text-gray-600 file:rounded-lg file:px-3 file:py-2 file:bg-primary file:text-white"
+            />
+            {previews.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-4">
+                {previews.map((src, i) => (
+                  <Image
+                    key={i}
+                    src={src}
+                    alt={`preview-${i}`}
+                    width={100}
+                    height={100}
+                    className="rounded-lg border object-cover"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          {error && (
+            <div className="bg-red-100 text-red-700 px-4 py-2 rounded-lg">
+              {error}
             </div>
-          </form>
-        </div>
+          )}
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 border rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-60"
+            >
+              {submitting ? "Creating…" : "Create"}
+            </button>
+          </div>
+        </form>
       </Modal>
+
       <Modal open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
-        <div className="p-6 text-center">
+        <div className="text-center">
           <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
           <p className="mb-6">This will permanently delete the incident.</p>
           <div className="flex justify-center space-x-4">
             <button
-              onClick={async () => {
-                if (confirmDeleteId) await handleDelete(confirmDeleteId);
-                setConfirmDeleteId(null);
+              onClick={() => {
+                if (confirmDeleteId) handleDelete(confirmDeleteId);
               }}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              className="px-6 py-2 bg-red-600 text-white rounded-lg"
             >
               Yes, delete
             </button>
-            <button onClick={() => setConfirmDeleteId(null)} className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition">Cancel</button>
+            <button
+              onClick={() => setConfirmDeleteId(null)}
+              className="px-6 py-2 border rounded-lg"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </Modal>
     </div>
   );
-}
-
-async function uploadToFirebase(file: File): Promise<string> {
-  return "";
 }
