@@ -10,7 +10,7 @@ from .api.resource import router as resources_router
 from .api.auth import router as auth_router
 from .api.disaster import router as disaster_router
 from .api.chat import router as chat_router
-from app.api.observation import router as observation_router
+from .api.observation import router as observation_router
 
 from app.schemas.user import User 
 
