@@ -73,7 +73,7 @@ export function MainSidebar({
     Responder: [
       {
         title: "Tasks",
-        href: `/dashboard/${roleSlug}/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/responder/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: CheckSquare,
       },
       {
