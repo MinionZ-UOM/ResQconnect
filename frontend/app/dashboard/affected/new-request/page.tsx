@@ -6,50 +6,58 @@ import type { Disaster, GeoLocation, RequestType, RequestPriority } from "@/lib/
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
 
+interface MediaItem {
+  url:     string;
+  file_id: string;
+  name?:   string;
+  size?:   number;
+  width?:  number;
+  height?: number;
+}
+
 export default function NewRequestPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const disasterIdParam = searchParams.get("disasterId") ?? "none";
+  const sp = useSearchParams();
+  const disasterIdParam = sp.get("disasterId") ?? "none";
 
-  // --- disasters list ---
+  // — disasters
   const [disasters, setDisasters] = useState<Disaster[]>([]);
   const [loadingDisasters, setLoadingDisasters] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // --- form fields ---
+  // — form fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [requestType, setRequestType] = useState<RequestType | "">("");
   const [priority, setPriority] = useState<RequestPriority | "">("");
-  const [selectedDisaster, setSelectedDisaster] = useState<string>(disasterIdParam);
+  const [selectedDisaster, setSelectedDisaster] = useState(disasterIdParam);
 
-  // --- location ---
+  // — location
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
 
-  // --- ImageKit uploads ---
+  // — pre-upload selection & previews
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
-  // --- submission state ---
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // — post-upload media metadata
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // — submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch disasters
   useEffect(() => {
     (async () => {
-      console.log("Loading disasters…");
       setLoadingDisasters(true);
       try {
         const data = await callApi<Disaster[]>("disasters", "GET");
-        console.log("Fetched disasters:", data);
         setDisasters(data);
-      } catch (err) {
-        console.error("Failed to fetch disasters:", err);
-        setFetchError("Could not load disasters. Please try again later.");
+      } catch {
+        setFetchError("Could not load disasters.");
       } finally {
         setLoadingDisasters(false);
       }
@@ -63,122 +71,83 @@ export default function NewRequestPage() {
       return;
     }
     setIsLoadingLocation(true);
-    console.log("Attempting to get geolocation…");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        console.log("Got position:", pos);
-        setLocation({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        });
+        setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         setIsLoadingLocation(false);
       },
-      (err) => {
-        console.error("Error getting location:", err);
+      () => {
         setLocationError("Unable to get your location.");
         setIsLoadingLocation(false);
       }
     );
   }, []);
 
-  // Cleanup camera on unmount
+  // Build previews whenever selectedFiles changes
   useEffect(() => {
-    return () => {
-      if (isCameraActive && videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, [isCameraActive]);
+    previews.forEach((url) => URL.revokeObjectURL(url));
+    const newPreviews = selectedFiles.map((f) => URL.createObjectURL(f));
+    setPreviews(newPreviews);
+    return () => newPreviews.forEach((url) => URL.revokeObjectURL(url));
+  }, [selectedFiles]);
 
-  // Toggle camera on/off
-  const toggleCamera = async () => {
-    if (isCameraActive) {
-      console.log("Stopping camera…");
-      const stream = videoRef.current?.srcObject as MediaStream;
-      stream?.getTracks().forEach((t) => t.stop());
-      if (videoRef.current) videoRef.current.srcObject = null;
-      setIsCameraActive(false);
-    } else {
-      console.log("Starting camera…");
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      } catch (err) {
-        console.error("Camera error:", err);
-        alert("Cannot access camera.");
-      }
-    }
+  // Handle file selection
+  const onFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.currentTarget.files || []);
+    setSelectedFiles((prev) => [...prev, ...files]);
+    e.currentTarget.value = "";
   };
 
-  // Capture & upload photo from camera
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      console.log("Captured blob:", blob);
-      const file = new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" });
-      try {
-        console.log("Uploading captured photo…");
-        const res = await imagekit.upload({
-          file,
-          fileName: file.name,
-          folder: "/requests/captures",
-        });
-        console.log("Capture upload result:", res);
-        setMediaUrls((prev) => [...prev, res.url]);
-      } catch (err) {
-        console.error("Capture upload failed:", err);
-        alert("Could not upload captured photo");
-      }
-    }, "image/jpeg");
+  // Remove a preview before upload
+  const removePreview = (idx: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 1. grab the native input element immediately
-    const input = e.currentTarget
-    const files = Array.from(input.files || [])
-    
-    for (let file of files) {
-      try {
-        console.log("Uploading file:", file.name)
-        
-        // 2. fetch auth params yourself (so you know they’re there)
-        const authRes = await fetch("/api/imagekit/auth")
-        if (!authRes.ok) throw new Error("Auth fetch failed")
-        const { token, signature, expire } = await authRes.json()
-        console.log("Got auth params:", { token, signature, expire })
-        
-        // 3. pass them into your upload call
+  // Upload all selected files
+  const uploadAll = async () => {
+    if (selectedFiles.length === 0) return;
+    setIsUploading(true);
+
+    try {
+      // Fetch ImageKit auth once
+      const authRes = await fetch("/api/imagekit/auth");
+      if (!authRes.ok) throw new Error("Auth failed");
+      const { token, signature, expire } = await authRes.json();
+
+      for (let file of selectedFiles) {
         const res = await imagekit.upload({
           file,
           fileName: file.name,
           folder: "/requests",
-          tags: ["requestMedia"],
           token,
           signature,
           expire,
-        })
-        console.log("Upload success:", res)
-        setMediaUrls((prev) => [...prev, res.url])
-      } catch (err) {
-        console.error("Upload failed for", file.name, err)
-        alert(`Image upload failed: ${file.name}`)
+        });
+        // Map ImageKit response → our MediaItem
+        setMedia((prev) => [
+          ...prev,
+          {
+            url:     res.url,
+            file_id: res.fileId,
+            name:    file.name,
+            size:    res.fileSize,
+            width:   res.width,
+            height:  res.height,
+          },
+        ]);
       }
-    }
-    
-    // 4. now it’s safe to clear the input
-    input.value = ""
-  }
 
-  // Form submit
+      // Clear selection & previews
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("One or more uploads failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Final form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
@@ -194,31 +163,29 @@ export default function NewRequestPage() {
       type_of_need: requestType,
       priority,
       location: { lat: location.latitude, lng: location.longitude },
-      media_urls: mediaUrls,
+      media, // ← full array of MediaItem
     };
 
     console.log("Submitting payload:", payload);
     try {
       await callApi("requests", "POST", payload);
-      console.log("Request submitted successfully");
       alert("Request submitted!");
       router.push(
-        `/dashboard/affected/requests${selectedDisaster !== "none" ? `?disasterId=${selectedDisaster}` : ""}`
+        `/dashboard/affected/requests${
+          selectedDisaster !== "none" ? `?disasterId=${selectedDisaster}` : ""
+        }`
       );
-    } catch (err) {
-      console.error("Submission failed:", err);
-      alert("Submission failed. Try again.");
+    } catch {
+      alert("Submit failed.");
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-semibold">New Request</h1>
-      </header>
+      <h1 className="text-2xl md:text-3xl font-semibold mb-6">New Request</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Disaster selector */}
+        {/* — Disaster selector */}
         <div>
           <label className="block mb-1 font-medium">Disaster</label>
           {loadingDisasters ? (
@@ -234,17 +201,18 @@ export default function NewRequestPage() {
             >
               <option value="none">Not Included</option>
               {disasters.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
               ))}
             </select>
           )}
         </div>
 
-        {/* Title */}
+        {/* — Title */}
         <div>
           <label className="block mb-1 font-medium">Title</label>
           <input
-            name="title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -253,11 +221,10 @@ export default function NewRequestPage() {
           />
         </div>
 
-        {/* Description */}
+        {/* — Description */}
         <div>
           <label className="block mb-1 font-medium">Description</label>
           <textarea
-            name="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full border rounded px-3 py-2"
@@ -266,12 +233,11 @@ export default function NewRequestPage() {
           />
         </div>
 
-        {/* Type & Priority */}
+        {/* — Type & Priority */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block mb-1 font-medium">Type of Need</label>
             <select
-              name="typeOfNeed"
               value={requestType}
               onChange={(e) => setRequestType(e.target.value as RequestType)}
               className="w-full border rounded px-3 py-2"
@@ -286,7 +252,6 @@ export default function NewRequestPage() {
           <div>
             <label className="block mb-1 font-medium">Priority</label>
             <select
-              name="priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value as RequestPriority)}
               className="w-full border rounded px-3 py-2"
@@ -300,7 +265,7 @@ export default function NewRequestPage() {
           </div>
         </div>
 
-        {/* Location */}
+        {/* — Location */}
         <div>
           <label className="block mb-1 font-medium">Location</label>
           {isLoadingLocation ? (
@@ -316,7 +281,7 @@ export default function NewRequestPage() {
           )}
         </div>
 
-        {/* Photos (upload & camera) */}
+        {/* — Photos: select & preview */}
         <div>
           <label className="block mb-1 font-medium">Photos</label>
           <div className="flex gap-2 mb-2">
@@ -325,55 +290,62 @@ export default function NewRequestPage() {
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-2 border rounded"
             >
-              Upload
+              Select Files
             </button>
-            <button
-              type="button"
-              onClick={toggleCamera}
-              className="px-3 py-2 border rounded"
-            >
-              {isCameraActive ? "Stop Camera" : "Open Camera"}
-            </button>
+            {selectedFiles.length > 0 && (
+              <button
+                type="button"
+                onClick={uploadAll}
+                disabled={isUploading}
+                className="px-3 py-2 border rounded bg-green-100"
+              >
+                {isUploading ? "Uploading…" : "Upload Selected Images"}
+              </button>
+            )}
           </div>
           <input
+            ref={fileInputRef}
             type="file"
             multiple
             accept="image/*"
-            ref={fileInputRef}
-            onChange={handleFileChange}
+            onChange={onFilesSelected}
             className="hidden"
           />
 
-          {/* live camera & capture */}
-          {isCameraActive && (
-            <div className="mb-2">
-              <video ref={videoRef} autoPlay className="w-full max-w-sm rounded" />
-              <button
-                type="button"
-                onClick={capturePhoto}
-                className="mt-2 px-3 py-2 border rounded"
-              >
-                Capture
-              </button>
-              <canvas ref={canvasRef} className="hidden" />
+          {/* previews */}
+          {previews.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {previews.map((src, i) => (
+                <div key={i} className="relative">
+                  <img src={src} className="w-full h-24 object-cover rounded" />
+                  <button
+                    type="button"
+                    onClick={() => removePreview(i)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* uploaded URLs */}
-          {mediaUrls.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {mediaUrls.map((url) => (
-                <li key={url} className="text-sm text-blue-600">
-                  <a href={url} target="_blank" rel="noopener noreferrer">
-                    {url.split("/").pop()}
+          {/* uploaded */}
+          {media.length > 0 && (
+            <div className="space-y-2">
+              <p className="font-medium">Uploaded Images:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {media.map((m, i) => (
+                  <a key={i} href={m.url} target="_blank" rel="noopener noreferrer">
+                    <img src={m.url} className="w-full h-24 object-cover rounded" />
                   </a>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Submit */}
+        {/* — Submit */}
         <div>
           <button
             type="submit"
