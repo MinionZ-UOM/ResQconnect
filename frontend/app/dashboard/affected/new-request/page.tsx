@@ -20,11 +20,12 @@ export default function NewRequestPage() {
   const [requestType, setRequestType] = useState<RequestType | "">("")
   const [priority, setPriority] = useState<RequestPriority | "">("")
   const [location, setLocation] = useState<GeoLocation | null>(null)
-  const [address, setAddress] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [locationError, setLocationError] = useState("")
-  const [selectedDisaster, setSelectedDisaster] = useState<string>(disasterIdParam || "")
+  const [selectedDisaster, setSelectedDisaster] = useState<string>(
+    disasterIdParam ?? "none"
+  )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
@@ -36,7 +37,7 @@ export default function NewRequestPage() {
     const loadDisasters = async () => {
       setLoadingDisasters(true)
       try {
-        const data = await callApi<Disaster[]>("disasters/", "GET")
+        const data = await callApi<Disaster[]>("disasters", "GET")
         setDisasters(data)
       } catch (err) {
         console.error("Failed to fetch disasters:", err)
@@ -54,22 +55,20 @@ export default function NewRequestPage() {
       setIsLoadingLocation(true)
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const newLoc: GeoLocation = {
+          setLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          }
-          setLocation(newLoc)
-          setAddress("Current location detected")
+          })
           setIsLoadingLocation(false)
         },
         (error) => {
           console.error("Error getting location:", error)
-          setLocationError("Unable to get your location. Please enter manually.")
+          setLocationError("Unable to get your location. Please enable location or refresh.")
           setIsLoadingLocation(false)
         }
       )
     } else {
-      setLocationError("Geolocation not supported. Please enter location manually.")
+      setLocationError("Geolocation not supported. Please use a modern browser.")
     }
   }, [])
 
@@ -111,26 +110,37 @@ export default function NewRequestPage() {
     ctx?.drawImage(video, 0, 0)
     canvas.toBlob((blob) => {
       if (!blob) return
-      // For now, we ignore captured photos
+      // photos are a no-op for now
     }, "image/jpeg")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!location) {
+      alert("Location not available.")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const payload = {
-        disasterId: selectedDisaster,
+        disaster_id: selectedDisaster === "none" ? null : selectedDisaster,
         title,
         description,
-        type: requestType,
+        type_of_need: requestType,
         priority,
-        location: address || location,
+        location: {
+          lat: location.latitude,
+          lng: location.longitude,
+        },
       }
-      await callApi("requests/", "POST", payload)
+      await callApi("requests", "POST", payload)
       alert("Request submitted successfully!")
       router.push(
-        `/dashboard/affected/requests${selectedDisaster ? `?disasterId=${selectedDisaster}` : ""}`
+        `/dashboard/affected/requests${selectedDisaster && selectedDisaster !== "none"
+          ? `?disasterId=${selectedDisaster}`
+          : ""
+        }`
       )
     } catch (err) {
       console.error(err)
@@ -145,6 +155,7 @@ export default function NewRequestPage() {
         <h1 className="text-2xl md:text-3xl font-semibold">New Request</h1>
       </header>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Disaster selector */}
         <div>
           <label className="block mb-1 font-medium">Disaster</label>
           {loadingDisasters ? (
@@ -158,7 +169,7 @@ export default function NewRequestPage() {
               className="w-full border rounded px-3 py-2"
               required
             >
-              <option value="">Select a disaster</option>
+              <option value="none">Not Included</option>
               {disasters.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -168,6 +179,7 @@ export default function NewRequestPage() {
           )}
         </div>
 
+        {/* Title */}
         <div>
           <label className="block mb-1 font-medium">Title</label>
           <input
@@ -179,6 +191,7 @@ export default function NewRequestPage() {
           />
         </div>
 
+        {/* Description */}
         <div>
           <label className="block mb-1 font-medium">Description</label>
           <textarea
@@ -190,9 +203,10 @@ export default function NewRequestPage() {
           />
         </div>
 
+        {/* Type & Priority */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block mb-1 font-medium">Type</label>
+            <label className="block mb-1 font-medium">Type of Need</label>
             <select
               value={requestType}
               onChange={(e) => setRequestType(e.target.value as RequestType)}
@@ -205,7 +219,6 @@ export default function NewRequestPage() {
               <option value="Shelter">Shelter</option>
             </select>
           </div>
-
           <div>
             <label className="block mb-1 font-medium">Priority</label>
             <select
@@ -222,27 +235,23 @@ export default function NewRequestPage() {
           </div>
         </div>
 
+        {/* Location */}
         <div>
           <label className="block mb-1 font-medium">Location</label>
           {isLoadingLocation ? (
             <p>Detecting location...</p>
           ) : locationError ? (
-            <>
-              <p className="text-red-600 mb-1">{locationError}</p>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter address"
-                className="w-full border rounded px-3 py-2"
-                required
-              />
-            </>
+            <p className="text-red-600">{locationError}</p>
+          ) : location ? (
+            <p className="italic">
+              {`Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`}
+            </p>
           ) : (
-            <p className="italic">{address}</p>
+            <p className="italic">Location not available</p>
           )}
         </div>
 
+        {/* Photos (no-op) */}
         <div>
           <label className="block mb-1 font-medium">Photos</label>
           <div className="flex gap-2 mb-2">
@@ -268,7 +277,6 @@ export default function NewRequestPage() {
             className="hidden"
             accept="image/*"
           />
-
           {isCameraActive && (
             <div className="mb-2">
               <video ref={videoRef} autoPlay className="w-full max-w-sm rounded" />
@@ -283,6 +291,7 @@ export default function NewRequestPage() {
           )}
         </div>
 
+        {/* Submit */}
         <div>
           <button
             type="submit"
