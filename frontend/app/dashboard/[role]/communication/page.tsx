@@ -9,6 +9,8 @@ import {
   orderBy,
   limit,
   addDoc,
+  doc as firestoreDoc,
+  getDoc,
 } from "firebase/firestore"
 import { onAuthStateChanged, User } from "firebase/auth"
 import { auth, db } from "@/lib/firebaseClient"
@@ -42,23 +44,24 @@ export default function CommunicationPage({
 }) {
   const { role } = params
 
-  // STATE
+  // --- state for auth, disasters, chat, plus our userCache ---
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null)
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [active, setActive] = useState<Disaster | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState("")
+  const [userCache, setUserCache] = useState<Record<string, string>>({})
   const endRef = useRef<HTMLDivElement>(null)
 
   // 1) Auth listener
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setFirebaseUser(u)
-      // clear out state if user signs out
       if (!u) {
         setDisasters([])
         setActive(null)
         setMessages([])
+        setUserCache({})
       }
     })
     return () => unsubAuth()
@@ -66,48 +69,33 @@ export default function CommunicationPage({
 
   // 2) When we have a user, start listening to disasters
   useEffect(() => {
-    if (!firebaseUser) {
-      console.log("No user")
-      return
-    }
+    if (!firebaseUser) return
 
     const uid = firebaseUser.uid
-    console.log("Listening disasters for user:", uid)
-
     const base = collection(db, "disasters")
     const q =
       role === "admin"
         ? query(base, orderBy("created_at", "desc"), limit(50))
-        : // if you have a participants array in the doc:
-          query(base, where("participants", "array-contains", uid))
+        : query(base, where("participants", "array-contains", uid))
 
     const unsub = onSnapshot(q, (snap) => {
       const arr = snap.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<Disaster, "id">),
       }))
-      console.log("Disasters snapshot:", arr)
       setDisasters(arr)
-      if (!active && arr.length) {
-        setActive(arr[0])
-        console.log("Set active to:", arr[0])
-      }
+      if (!active && arr.length) setActive(arr[0])
     })
-    return () => {
-      console.log("Unsub disasters")
-      unsub()
-    }
+    return () => unsub()
   }, [firebaseUser, role])
 
   // 3) When active disaster changes, listen to messages
   useEffect(() => {
     if (!active) {
-      console.log("No active disaster")
       setMessages([])
       return
     }
 
-    console.log("Listening messages for chat:", active.chat_session_id)
     const msgCol = collection(
       db,
       "chatSessions",
@@ -120,23 +108,33 @@ export default function CommunicationPage({
         id: d.id,
         ...(d.data() as Omit<Message, "id">),
       }))
-      console.log("Messages snapshot:", msgs)
       setMessages(msgs)
       endRef.current?.scrollIntoView({ behavior: "smooth" })
     })
-    return () => {
-      console.log("Unsub messages")
-      unsub()
-    }
+    return () => unsub()
   }, [active])
 
-  // 4) send
+  // 4) Whenever messages change, fetch display names for any new senders
+  useEffect(() => {
+    const missing = Array.from(new Set(messages.map((m) => m.sender_id)))
+      .filter((uid) => uid !== "ai-assistant" && !(uid in userCache))
+
+    missing.forEach(async (uid) => {
+      try {
+        const userSnap = await getDoc(firestoreDoc(db, "users", uid))
+        const data = userSnap.data()
+        const displayName =
+          data?.display_name || data?.email || uid.slice(-6)
+        setUserCache((prev) => ({ ...prev, [uid]: displayName }))
+      } catch {
+        setUserCache((prev) => ({ ...prev, [uid]: uid.slice(-6) }))
+      }
+    })
+  }, [messages, userCache])
+
+  // 5) sendMessage
   const sendMessage = async () => {
-    if (!text.trim() || !active || !firebaseUser) {
-      console.log("Cannot send, missing data", { text, active, user: firebaseUser })
-      return
-    }
-    console.log("Sending message:", text)
+    if (!text.trim() || !active || !firebaseUser) return
     const col = collection(
       db,
       "chatSessions",
@@ -150,9 +148,6 @@ export default function CommunicationPage({
     })
     setText("")
   }
-
-  console.log("Render", { disasters, active, messages, firebaseUser })
-
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -188,10 +183,7 @@ export default function CommunicationPage({
                         ? "bg-blue-50 dark:bg-blue-900"
                         : "hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
-                    onClick={() => {
-                      setActive(d)
-                      console.log("Clicked set active:", d)
-                    }}
+                    onClick={() => setActive(d)}
                   >
                     <Users className="h-8 w-8 text-blue-500 bg-blue-100 dark:bg-blue-900 p-1.5 rounded-md" />
                     <div className="flex-1 min-w-0">
@@ -227,8 +219,12 @@ export default function CommunicationPage({
                 <CardContent className="p-0 flex flex-col h-[calc(100%-8rem)]">
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((m) => {
-                      const isMe = m.sender_id === auth.currentUser?.uid
+                      const isMe = m.sender_id === firebaseUser?.uid
                       const isAI = m.sender_id === "ai-assistant"
+                      const name = isAI
+                        ? "AI Assistant"
+                        : userCache[m.sender_id] || m.sender_id.slice(-6)
+
                       return (
                         <div
                           key={m.id}
@@ -245,13 +241,13 @@ export default function CommunicationPage({
                               className={isAI ? "bg-blue-100 text-blue-600" : ""}
                             >
                               <AvatarFallback>
-                                {isAI ? <Bot className="h-4 w-4" /> : m.sender_id.slice(-2).toUpperCase()}
+                                {isAI ? <Bot className="h-4 w-4" /> : name.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-sm font-medium">
-                                  {isAI ? "AI Assistant" : m.sender_id}
+                                  {name}
                                 </span>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
                                   {new Date(
