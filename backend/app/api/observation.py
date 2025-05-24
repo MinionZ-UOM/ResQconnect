@@ -30,7 +30,7 @@ def create_obs(
     user=Depends(get_current_user),
 ):
     if not check_permission(user, "observation:create"):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient permissions")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return create_observation(payload, user.uid)
 
 
