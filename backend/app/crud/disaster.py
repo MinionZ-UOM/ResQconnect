@@ -58,7 +58,8 @@ def get_disaster(disaster_id: str) -> Optional[DisasterResponse]:
 
 def join_disaster(disaster_id: str, uid: str, role: str) -> Optional[DisasterResponse]:
     doc_ref = db.collection("disasters").document(disaster_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         return None
 
     # 1) add/update the participant sub-doc
