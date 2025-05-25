@@ -1,17 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-
+from typing import List
 from app.schemas.request import Request, RequestCreate, RequestStatusUpdate
 from app.schemas.user import User
 from app.core.permissions import require_perms
 from app.api.deps import get_current_user
 from app.crud import request as crud
 
-router = APIRouter(prefix="/requests", tags=["Requests"])
-
+router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False)
 
 # - create -
 @router.post(
-    "/",
+    "",
+    response_model=Request,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[require_perms("request:create")],
+)
+@router.post(
+    "/",  
+    include_in_schema=False,
     response_model=Request,
     status_code=status.HTTP_201_CREATED,
     dependencies=[require_perms("request:create")],
@@ -25,8 +31,14 @@ def create_request(
 
 # - list -
 @router.get(
-    "/",
-    response_model=list[Request],
+    "",
+    response_model=List[Request],
+    dependencies=[require_perms("request:read_all")],
+)
+@router.get(
+    "/",  
+    include_in_schema=False,
+    response_model=List[Request],
     dependencies=[require_perms("request:read_all")],
 )
 def list_requests():

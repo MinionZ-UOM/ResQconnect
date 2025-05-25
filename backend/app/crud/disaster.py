@@ -22,6 +22,7 @@ def create_disaster(payload: DisasterCreate, admin_uid: str) -> DisasterResponse
             "created_at": now,
             "created_by": admin_uid,
             "chat_session_id": chat_ref.id,
+            "participants": [],  # ← initialize empty array
         },
     )
     batch.set(chat_ref, {"disaster_id": disaster_ref.id, "created_at": now})
@@ -40,46 +41,69 @@ def list_disasters() -> List[DisasterResponse]:
     docs = db.collection("disasters").stream()
     return [DisasterResponse(id=d.id, **d.to_dict()) for d in docs]
 
+
 def get_disaster(disaster_id: str) -> Optional[DisasterResponse]:
-    doc = db.collection("disasters").document(disaster_id).get()
-    if not doc.exists:
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snap = doc_ref.get()
+    if not snap.exists:
         return None
-    return DisasterResponse(id=doc.id, **doc.to_dict())
+
+    data = snap.to_dict() or {}
+    # load participants sub-collection
+    parts = doc_ref.collection("participants").stream()
+    participants = [{"uid": p.id, **(p.to_dict() or {})} for p in parts]
+    data["participants"] = participants
+    return DisasterResponse(id=snap.id, **data)
 
 
-def join_disaster(disaster_id: str, uid: str, role: str) -> None:
-    (
-        db.collection("disasters")
-          .document(disaster_id)
-          .collection("participants")
-          .document(uid)
-          .set({"role": role, "joined_at": firestore.SERVER_TIMESTAMP}, merge=True)
-    )
+def join_disaster(disaster_id: str, uid: str, role: str) -> Optional[DisasterResponse]:
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        return None
 
-def leave_disaster(disaster_id: str, uid: str) -> None:
-    (
-        db.collection("disasters")
-          .document(disaster_id)
-          .collection("participants")
-          .document(uid)
-          .delete()
-    )
+    # 1) add/update the participant sub-doc
+    doc_ref.collection("participants") \
+           .document(uid) \
+           .set(
+               {"role": role, "joined_at": firestore.SERVER_TIMESTAMP},
+               merge=True
+           )
+
+    # 2) also array-union the UID into the root `participants` field
+    doc_ref.update({
+        "participants": firestore.ArrayUnion([uid])
+    })
+
+    # return the updated disaster, including full participants list
+    return get_disaster(disaster_id)
+
+
+def leave_disaster(disaster_id: str, uid: str) -> Optional[DisasterResponse]:
+    doc_ref = db.collection("disasters").document(disaster_id)
+    if not doc_ref.get().exists:
+        return None
+
+    # remove from sub-collection
+    doc_ref.collection("participants").document(uid).delete()
+
+    # remove from root array
+    doc_ref.update({
+        "participants": firestore.ArrayRemove([uid])
+    })
+
+    return get_disaster(disaster_id)
 
 
 def delete_disaster(disaster_id: str) -> None:
     """
     Permanently remove the disaster document and its associated chat session.
     """
-    # Reference to the disaster doc
     doc_ref = db.collection("disasters").document(disaster_id)
     doc = doc_ref.get()
-
     if doc.exists:
         data = doc.to_dict() or {}
-        # delete the chat session if present
         chat_id = data.get("chat_session_id")
         if chat_id:
             db.collection("chatSessions").document(chat_id).delete()
-
-    # finally delete the disaster itself
     doc_ref.delete()

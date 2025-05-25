@@ -44,13 +44,26 @@ def get_disaster(disaster_id: str):
     return d
 
 
-@router.post("/{disaster_id}/join", status_code=204)
+@router.post(
+    "/{disaster_id}/join",
+    response_model=DisasterResponse,
+    status_code=status.HTTP_200_OK,
+)
 def join_disaster(
     disaster_id: str,
-    role: str = Body(..., embed=True, regex="^(volunteer|first_responder|affected_individual)$"),
+    role: str = Body(
+        ...,
+        embed=True,
+        regex="^(volunteer|first_responder|affected_individual)$"
+    ),
     user=Depends(get_current_user),
 ):
-    crud.join_disaster(disaster_id, user.uid, role)
+    # Attempt to add the user to the disaster
+    updated = crud.join_disaster(disaster_id, user.uid, role)
+    if updated is None:
+        # Crud should return None if the disaster_id was invalid
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
+    return updated
 
 
 @router.delete("/{disaster_id}/leave", status_code=204)
