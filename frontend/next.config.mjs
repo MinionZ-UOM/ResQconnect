@@ -17,7 +17,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',                 // what the browser hits
-        destination: 'http://localhost:8000/:path*', // FastAPI
+        destination: 'http://127.0.0.1:8000//:path*', // FastAPI
       },
     ];
   },

@@ -10,6 +10,7 @@ from .api.resource import router as resources_router
 from .api.auth import router as auth_router
 from .api.disaster import router as disaster_router
 from .api.chat import router as chat_router
+from .api.agent import router as agent_router
 
 from app.schemas.user import User 
 
@@ -44,6 +45,7 @@ app.include_router(resources_router)
 app.include_router(auth_router)
 app.include_router(disaster_router)
 app.include_router(chat_router)
+app.include_router(agent_router)
 
 
 @app.get("/", tags=["health"])
