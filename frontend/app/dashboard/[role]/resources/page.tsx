@@ -37,6 +37,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Plus, Search, Edit, Trash, MapPin } from "lucide-react";
 import type { Resource, ResourceType, ResourceStatus } from "@/lib/types";
 import { db } from "@/lib/firebaseClient";
@@ -150,6 +156,44 @@ const handleDeleteResource = async (resourceId: string) => {
   } catch (err: any) {
     console.error("Error deleting resource:", err);
     alert(err.message || "An error occurred while deleting the resource");
+  }
+};
+
+const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceStatus) => {
+  const nextStatus: ResourceStatus =
+    currentStatus === "Available" ? "Not_Available" : "Available";
+
+  const confirmUpdate = window.confirm(`Change status to ${nextStatus}?`);
+  if (!confirmUpdate) return;
+
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const token = await user.getIdToken();
+
+    const res = await fetch(`/api/resources/${resourceId}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        status: nextStatus.toLowerCase(), // backend expects "available" or "not_available"
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Failed to update status");
+    }
+
+    alert(`Resource status updated to ${nextStatus}`);
+    await fetchResources(currentUid);
+  } catch (err: any) {
+    console.error("Error updating resource status:", err);
+    alert(err.message || "An error occurred while updating status");
   }
 };
 
@@ -348,14 +392,37 @@ const handleDeleteResource = async (resourceId: string) => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteResource(r.id)}
-                        >
-                          <Trash className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(r.id, r.status)}
+                              >
+                                <Edit className="h-4 w-4 text-blue-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Change Availability Status</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteResource(r.id)}
+                              >
+                                <Trash className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete Resource</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>
