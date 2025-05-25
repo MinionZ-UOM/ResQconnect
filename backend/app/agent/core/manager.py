@@ -1,3 +1,5 @@
+from datetime import datetime
+from pathlib import Path
 import yaml
 import importlib
 from langgraph.graph import StateGraph, START, END
@@ -48,3 +50,12 @@ class Manager:
 
     def run(self, state: State) -> State:
         return self.app.invoke(state)
+    
+    # def visualize(self, output_dir: str = "app/agent/visualizations/langgraph") -> str:
+    #     Path(output_dir).mkdir(parents=True, exist_ok=True)
+    #     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #     file_path = Path(output_dir) / f"langgraph_{timestamp}.png"
+
+    #     self.app.get_graph().draw_png(str(file_path))
+
+    #     return str(file_path)

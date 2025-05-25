@@ -1,0 +1,101 @@
+[
+  {
+    "donor_id": "101",
+    "donor_type": "volunteer",
+    "resource_type": "rescue_equipment",
+    "location": {
+      "latitude": 28.652,
+      "longitude": 77.191
+    },
+    "quantity": 2,
+    "status": "active"
+  },
+  {
+    "donor_id": "102",
+    "donor_type": "admin",
+    "resource_type": "medical_kit",
+    "location": {
+      "latitude": 28.653,
+      "longitude": 77.1925
+    },
+    "quantity": 4,
+    "status": "active"
+  },
+  {
+    "donor_id": "103",
+    "donor_type": "volunteer",
+    "resource_type": "vehicle",
+    "location": {
+      "latitude": 28.6505,
+      "longitude": 77.1888
+    },
+    "quantity": 1,
+    "status": "in_use"
+  },
+  {
+    "donor_id": "104",
+    "donor_type": "admin",
+    "resource_type": "vehicle",
+    "location": {
+      "latitude": 28.6495,
+      "longitude": 77.189
+    },
+    "quantity": 2,
+    "status": "active"
+  },
+  {
+    "donor_id": "105",
+    "donor_type": "volunteer",
+    "resource_type": "fuel",
+    "location": {
+      "latitude": 28.6525,
+      "longitude": 77.1904
+    },
+    "quantity": 15,
+    "status": "active"
+  },
+  {
+    "donor_id": "106",
+    "donor_type": "admin",
+    "resource_type": "water",
+    "location": {
+      "latitude": 28.6513,
+      "longitude": 77.191
+    },
+    "quantity": 100,
+    "status": "active"
+  },
+  {
+    "donor_id": "107",
+    "donor_type": "volunteer",
+    "resource_type": "rescue_equipment",
+    "location": {
+      "latitude": 28.652,
+      "longitude": 77.1899
+    },
+    "quantity": 1,
+    "status": "active"
+  },
+  {
+    "donor_id": "109",
+    "donor_type": "volunteer",
+    "resource_type": "medical_kit",
+    "location": {
+      "latitude": 28.6508,
+      "longitude": 77.1907
+    },
+    "quantity": 3,
+    "status": "in_use"
+  },
+  {
+    "donor_id": "110",
+    "donor_type": "admin",
+    "resource_type": "communication_device",
+    "location": {
+      "latitude": 28.6531,
+      "longitude": 77.1895
+    },
+    "quantity": 2,
+    "status": "active"
+  }
+]

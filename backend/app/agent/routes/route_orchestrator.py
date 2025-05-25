@@ -10,5 +10,7 @@ class RouteOrchestrator:
             return "agent_incident"
         elif state.next_action.value == Action.task_creation.value:
             return "agent_task"
+        elif state.next_action.value == Action.task_allocation.value:
+            return "agent_allocation"
         else:
             return END
