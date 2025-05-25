@@ -1,0 +1,347 @@
+"use client";
+
+import type React from "react";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Plus, Search, Edit, Trash, MapPin } from "lucide-react";
+import type { Resource, ResourceType, ResourceStatus } from "@/lib/types";
+import { db } from "@/lib/firebaseClient";
+import { collection, query, where, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+
+export default function ResourcesPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<ResourceType | "All">("All");
+  const [statusFilter, setStatusFilter] = useState<ResourceStatus | "All">("All");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [userResources, setUserResources] = useState<Resource[]>([]);
+  const [resourceType, setResourceType] = useState("");
+  const [resourceQuantity, setResourceQuantity] = useState(1);
+  const [resourceLocationLat, setResourceLocationLat] = useState("");
+  const [resourceLocationLng, setResourceLocationLng] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUid, setCurrentUid] = useState("");
+
+  const fetchResources = async (uid: string) => {
+    const q = query(collection(db, "resources"), where("uid", "==", uid));
+    const snapshot = await getDocs(q);
+    const data: Resource[] = snapshot.docs.map((doc) => {
+      const d = doc.data();
+      return {
+        id: doc.id,
+        name: d.category,
+        type: d.category,
+        status: d.status === "not_available" ? "Not_Available" : "Available",
+        quantity: d.quantity_available,
+        location: {
+          latitude: d.location_lat,
+          longitude: d.location_lng,
+          address: `Lat: ${d.location_lat}, Lng: ${d.location_lng}`,
+        },
+        createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+        updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
+      };
+    });
+    setUserResources(data);
+  };
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUid(user.uid);
+        await fetchResources(user.uid);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleAddResource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const docRef = await addDoc(collection(db, "resources"), {
+        category: resourceType,
+        quantity_total: resourceQuantity,
+        quantity_available: resourceQuantity,
+        location_lat: parseFloat(resourceLocationLat),
+        location_lng: parseFloat(resourceLocationLng),
+        status: "available",
+        uid: currentUid,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+      });
+
+      // Refresh list
+      await fetchResources(currentUid);
+
+      // Reset form
+      setResourceType("");
+      setResourceQuantity(1);
+      setResourceLocationLat("");
+      setResourceLocationLng("");
+      setIsAddDialogOpen(false);
+      alert("Resource added successfully!");
+    } catch (error) {
+      console.error("Error adding resource:", error);
+      alert("Error adding resource. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredResources = userResources.filter((r) => {
+    const matchesSearch = searchQuery === "" || r.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "All" || r.type === typeFilter;
+    const matchesStatus = statusFilter === "All" || r.status === statusFilter;
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  const getStatusBadge = (status: ResourceStatus) => {
+    switch (status) {
+      case "Available":
+        return <Badge className="bg-green-500">Available</Badge>;
+      case "Not_Available":
+        return <Badge className="bg-red-500">Not Available</Badge>;
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4 md:p-6">
+      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+            Resource Management
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">
+            Manage and track your resources
+          </p>
+        </div>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Add Resource
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Resource</DialogTitle>
+              <DialogDescription>Fill in the resource details.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleAddResource} className="space-y-4">
+              <div>
+                <Label htmlFor="type">Resource Type</Label>
+                <Select value={resourceType} onValueChange={(val) => setResourceType(val)}>
+                  <SelectTrigger id="type">
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vehicle">Vehicle</SelectItem>
+                    <SelectItem value="food">Food</SelectItem>
+                    <SelectItem value="medicine">Medicine</SelectItem>
+                    <SelectItem value="water">Water</SelectItem>
+                    <SelectItem value="clothing">Clothing</SelectItem>
+                    <SelectItem value="shelter">Shelter</SelectItem>
+                    <SelectItem value="rescue_equipment">Rescue Equipment</SelectItem>
+                    <SelectItem value="communication_device">Communication Device</SelectItem>
+                    <SelectItem value="power_supply">Power Supply</SelectItem>
+                    <SelectItem value="sanitation_kit">Sanitation Kit</SelectItem>
+                    <SelectItem value="fuel">Fuel</SelectItem>
+                    <SelectItem value="medical_kit">Medical Kit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min={1}
+                  value={resourceQuantity}
+                  onChange={(e) => setResourceQuantity(Number(e.target.value))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="lat">Latitude</Label>
+                <Input
+                  id="lat"
+                  value={resourceLocationLat}
+                  onChange={(e) => setResourceLocationLat(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="lng">Longitude</Label>
+                <Input
+                  id="lng"
+                  value={resourceLocationLng}
+                  onChange={(e) => setResourceLocationLng(e.target.value)}
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Adding..." : "Add Resource"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </header>
+
+          <div className="container mx-auto p-4 md:p-6">
+      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+        </div>
+      </header>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Resource Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="type-filter">Resource Type</Label>
+              <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val as ResourceType | "All")}>
+                <SelectTrigger id="type-filter">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Types</SelectItem>
+                  <SelectItem value="vehicle">Vehicle</SelectItem>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="medicine">Medicine</SelectItem>
+                  <SelectItem value="water">Water</SelectItem>
+                  <SelectItem value="clothing">Clothing</SelectItem>
+                  <SelectItem value="shelter">Shelter</SelectItem>
+                  <SelectItem value="rescue_equipment">Rescue Equipment</SelectItem>
+                  <SelectItem value="communication_device">Communication Device</SelectItem>
+                  <SelectItem value="power_supply">Power Supply</SelectItem>
+                  <SelectItem value="sanitation_kit">Sanitation Kit</SelectItem>
+                  <SelectItem value="fuel">Fuel</SelectItem>
+                  <SelectItem value="medical_kit">Medical Kit</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="status-filter">Status</Label>
+              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as ResourceStatus | "All")}>
+                <SelectTrigger id="status-filter">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All Statuses</SelectItem>
+                  <SelectItem value="Available">Available</SelectItem>
+                  <SelectItem value="Not_Available">Not Available</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="search">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+                <Input
+                  id="search"
+                  placeholder="Search resources..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Resources</CardTitle>
+          <CardDescription>{filteredResources.length} resources found</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredResources.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell><Badge variant="outline">{r.type}</Badge></TableCell>
+                    <TableCell>{r.quantity}</TableCell>
+                    <TableCell>{getStatusBadge(r.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        <span>{r.location?.address || "Unknown"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon"><Trash className="h-4 w-4" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredResources.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4 text-slate-500">
+                      No resources found matching the current filters.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+    </div>
+  );
+}
