@@ -3,6 +3,8 @@ from pathlib import Path
 import yaml
 import importlib
 from langgraph.graph import StateGraph, START, END
+from langfuse.callback import CallbackHandler
+import os
 
 from app.agent.schemas.state import State
 
@@ -11,6 +13,12 @@ class Manager:
         self.config_path = config_path
         self.graph = self._build_graph_from_config()
         self.app = self.graph.compile()
+        # Initialize Langfuse CallbackHandler for Langchain (tracing)
+        self.langfuse_handler = CallbackHandler(
+            secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
+            public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
+            host=os.environ.get("LANGFUSE_HOST")
+        )
 
     def _load_class(self, dotted_path: str):
         module_path, class_name = dotted_path.rsplit('.', 1)
@@ -49,7 +57,7 @@ class Manager:
         return graph
 
     def run(self, state: State) -> State:
-        return self.app.invoke(state)
+        return self.app.invoke(state, config={"callbacks": [self.langfuse_handler]})
     
     # def visualize(self, output_dir: str = "app/agent/visualizations/langgraph") -> str:
     #     Path(output_dir).mkdir(parents=True, exist_ok=True)
