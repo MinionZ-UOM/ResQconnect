@@ -1,0 +1,62 @@
+[
+  {
+    "incident_id": 1,
+    "title": "Water Level Rising",
+    "description": "The water has reached the first floor of homes.",
+    "urgency": "high",
+    "location": {
+      "latitude": 28.614,
+      "longitude": 77.209
+    },
+    "photos": null,
+    "posted_time": "2025-05-24T08:30:00Z"
+  },
+  {
+    "incident_id": 1,
+    "title": "People on Rooftops",
+    "description": "At least 10 people stranded on a rooftop waiting for help.",
+    "urgency": "critical",
+    "location": {
+      "latitude": 28.615,
+      "longitude": 77.210
+    },
+    "photos": null,
+    "posted_time": "2025-05-24T09:15:00Z"
+  },
+  {
+    "incident_id": 1,
+    "title": "No Electricity",
+    "description": "Power outage since midnight, water entering transformer stations.",
+    "urgency": "medium",
+    "location": {
+      "latitude": 28.613,
+      "longitude": 77.208
+    },
+    "photos": null,
+    "posted_time": "2025-05-24T07:45:00Z"
+  },
+  {
+    "incident_id": 1,
+    "title": "Medical Emergency",
+    "description": "Elderly woman requires immediate evacuation and medical help.",
+    "urgency": "critical",
+    "location": {
+      "latitude": 28.616,
+      "longitude": 77.211
+    },
+    "photos": null,
+    "posted_time": "2025-05-24T09:45:00Z"
+  },
+  {
+    "incident_id": 1,
+    "title": "Blocked Roads",
+    "description": "All main roads leading to the area are submerged.",
+    "urgency": "high",
+    "location": {
+      "latitude": 28.612,
+      "longitude": 77.207
+    },
+    "photos": null,
+    "posted_time": "2025-05-24T08:00:00Z"
+  }
+]

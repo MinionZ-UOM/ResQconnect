@@ -1,0 +1,47 @@
+nodes:
+  - name: agent_orchestrator
+    module: "app.agent.agents.agent_orchestrator.AgentOrchestrator"
+    description: "Orchestrate the tasks"
+
+  - name: agent_intake
+    module: "app.agent.agents.agent_intake.AgentIntake"
+    description: "Extract information from request"
+
+  - name: agent_incident
+    module: "app.agent.agents.agent_incident.AgentIncident"
+    description: "Handle incident assignment or creation"
+  
+  - name: agent_task
+    module: "app.agent.agents.agent_task.AgentTask"
+    description: "Handle task creation"
+
+edges:
+  - type: direct
+    from: start
+    to: agent_orchestrator
+
+  - type: conditional
+    from: agent_orchestrator
+    route: app.agent.routes.route_orchestrator.RouteOrchestrator
+    to:
+      agent_intake: agent_intake
+      agent_incident: agent_incident
+      agent_task: agent_task
+      END: __end__
+
+  - type: conditional
+    from: agent_intake
+    route: app.agent.routes.route_intake.RouteIntake
+    to:
+      agent_incident: agent_incident
+      agent_task: agent_task
+      END: __end__
+  
+  - type: conditional
+    from: agent_incident
+    route: app.agent.routes.route_incident.RouteIncident
+    to:
+      agent_task: agent_task
+      END: __end__
+
+default_agent: agent_orchestrator

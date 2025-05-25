@@ -1,0 +1,78 @@
+from typing import List, Optional
+from app.agent.core.base_agent import BaseAgent
+from app.agent.schemas.state import State
+from app.agent.rag.rag import build_vectorstores_from_pdfs, retrieve_from_collection, parse_documents_to_text
+from app.agent.schemas.types import Action
+from app.agent.utils.observation import load_observations_by_incident_id
+from app.agent.schemas.task import Task
+from app.agent.config.llms_config_loader import LLMConfig
+from app.agent.utils.llm import GroqAgent
+
+class AgentTask(BaseAgent):
+    def handle(self, state: State) -> State:
+        print('Inside task agent')
+
+        guidelines = ""
+        try:
+            build_vectorstores_from_pdfs()
+            docs = retrieve_from_collection(
+                collection_name=state.request.disaster_type.lower(),
+                query=state.request.original_request_text,
+            )
+            guidelines = parse_documents_to_text(docs)
+        except:
+            print('Error doing rag')
+
+        top_k = 3
+        observations = load_observations_by_incident_id(state.request.incident_id, top_k=top_k)
+        # print([observation.dict() for observation in observations])
+        
+        # Instantiate the agent and config
+        groq_agent = GroqAgent()
+        llm_cfg = LLMConfig()
+
+        system_prompt = f"""
+        You are a task creation agent. 
+        You will be provided with :
+            -request submitted by the affected individual of an incident
+            -information about the incident
+            -latest {top_k} observations submitted by the volunteers at the spot
+            -disaster management guidelines retrieved from the vectorstore 
+        Create tasks to be done in order to complete the request of the affected individual
+        only use the information about the incident and latest observations to get more current context.
+        do not create any task that is not related with the request submitted by the affected individual
+
+        - create tasks as actionable steps to volunteers
+        - create maximum of 3 tasks
+        - each task should be a standalone task, should not be a continuation of other one
+        - only provide tasks for the request, do not provide tasks for the observations.
+        """
+        user_prompt = f"""
+        Only create tasks relevant to do the needful to the request of the affected individual
+        request submitted by the affected  individual:
+        {state.request.dict()}
+
+        Use the below info only to just get the current situation of the incident
+        information about the incident:
+        {state.incident.dict()}
+
+        latest {top_k} observations from the volunteers at the site:
+        {[observation.dict() for observation in observations]}
+
+        use the below guidelines too:
+        {guidelines}
+        """
+
+        # Make the request
+        tasks = groq_agent.complete(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            model=llm_cfg.get_model('groq', 'TASK_CREATION'),
+            response_model=Optional[List[Task]]
+        )
+
+        state.tasks = tasks
+        state.previous_action = Action.task_creation
+        state.next_action = None
+
+        return state
