@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status ,BackgroundTasks
 from typing import List
 from app.schemas.request import Request, RequestCreate, RequestStatusUpdate
 from app.schemas.user import User
 from app.core.permissions import require_perms
 from app.api.deps import get_current_user
 from app.crud import request as crud
+
+from app.celery_config import run_agentic_workflow
 
 router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False)
 
@@ -22,11 +24,47 @@ router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False
     status_code=status.HTTP_201_CREATED,
     dependencies=[require_perms("request:create")],
 )
-def create_request(
+async def create_request(
     payload: RequestCreate,
-    current: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    current: User = Depends(get_current_user)
 ):
-    return crud.create(current.uid, payload)
+    # Step 1: Create the request in the database
+    request = crud.create(current.uid, payload)
+
+    # Step 2: Prepare the payload for the agentic workflow
+    agent_payload = {
+        "previous_action": None,
+        "next_action": "request_extraction",
+        "request": {
+            "incident_id": request.id,
+            "original_request_text_available": True,
+            "original_request_text": payload.description,
+            "original_request_voice_available": False,
+            "original_request_voice": "",
+            "extracted_request_voice": None,
+            "original_request_image_available": True,
+            "original_request_image": request.media[0].url if request.media else None,
+            "extracted_request_image": None,
+            "coordinates": {
+                "latitude": request.location.lat,
+                "longitude": request.location.lng
+            },
+            "location_from_coordinates": None,
+            "location_from_input": None,
+            "urgency": None,
+            "type_of_need": request.type_of_need.lower(),
+            "disaster_type": None,
+            "affected_people_count": None
+        },
+        "incident": None,
+        "tasks": None
+    }
+
+    # Step 3: Trigger the Celery task to run the agentic workflow asynchronously
+    run_agentic_workflow.apply_async(args=[agent_payload])
+
+    return request
 
 
 # - list -
