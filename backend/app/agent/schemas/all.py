@@ -24,7 +24,7 @@ class Coordinates(BaseModel):
     longitude: float
 
 class Request(BaseModel):
-    incident_id: Optional[int]
+    incident_id: Optional[str]
     original_request_text_available: bool
     original_request_text: str
     original_request_voice_available: bool
@@ -49,7 +49,7 @@ class TextParserOutput(BaseModel):
     affected_people_count: Optional[int]
 
 class Incident(BaseModel):
-    incident_id: int
+    incident_id: str
     incident_type: str
     incident_coordinates: Optional[Coordinates]
     incident_location: Optional[str]

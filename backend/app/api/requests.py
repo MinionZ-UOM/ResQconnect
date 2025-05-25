@@ -6,9 +6,12 @@ from app.core.permissions import require_perms
 from app.api.deps import get_current_user
 from app.crud import request as crud
 
+# Import both the task and the Celery app itself
+from app.celery_config import run_agentic_workflow, celery_app
+
 router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False)
 
-# - create -
+
 @router.post(
     "",
     response_model=Request,
@@ -22,12 +25,59 @@ router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False
     status_code=status.HTTP_201_CREATED,
     dependencies=[require_perms("request:create")],
 )
-def create_request(
+async def create_request(
     payload: RequestCreate,
-    current: User = Depends(get_current_user),
+    current: User = Depends(get_current_user)
 ):
-    return crud.create(current.uid, payload)
+    # Create the request in the database
+    request = crud.create(current.uid, payload)
 
+    # print(f'request : {request}')
+
+    # Build the agentic payload
+    agent_payload = {
+        "previous_action": None,
+        "next_action": "request_extraction",
+        "request": {
+            "incident_id": int(request.disaster_id) if request.disaster_id is not None else None,
+            "original_request_text_available": True,
+            "original_request_text": payload.description,
+            "original_request_voice_available": False,
+            "original_request_voice": "",
+            "extracted_request_voice": None,
+            "original_request_image_available": bool(request.media),
+            "original_request_image": request.media[0].url if request.media else None,
+            "extracted_request_image": None,
+            "coordinates": {
+                "latitude": request.location.lat,
+                "longitude": request.location.lng
+            },
+            "location_from_coordinates": None,
+            "location_from_input": None,
+            "urgency": None,
+            "type_of_need": request.type_of_need.lower(),
+            "disaster_type": None,
+            "affected_people_count": None
+        },
+        "incident": None,
+        "tasks": None
+    }
+
+    # Enqueue the task using a borrowed Celery connection
+    try:
+        with celery_app.connection_or_acquire() as conn:
+            run_agentic_workflow.apply_async(
+                args=[agent_payload],
+                connection=conn
+            )
+    except Exception as e:
+        # If Redis is exhausted or channel borrowing fails
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to enqueue agentic task: {e}"
+        )
+
+    return request
 
 # - list -
 @router.get(
