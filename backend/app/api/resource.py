@@ -70,3 +70,18 @@ def update_resource(rid: str, payload: ResourceUpdate):
         return crud.patch(rid, payload)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+@router.delete(
+    "/{rid}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    dependencies=[require_perms("resource:delete")]
+)
+def delete_resource(rid: str):
+    try:
+        crud.delete(rid)
+        return {"detail": "Resource deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")

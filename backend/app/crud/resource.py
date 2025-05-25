@@ -101,3 +101,12 @@ def update_role_id_by_uid(uid: str):
             "role_id": role_id,
             "updated_at": datetime.now(timezone.utc)
         })
+
+def delete(rid: str) -> bool:
+    doc_ref = _ref(rid)
+    snap = doc_ref.get()
+    if not snap.exists:
+        raise ValueError("Resource not found")
+    doc_ref.delete()
+    return True
+
