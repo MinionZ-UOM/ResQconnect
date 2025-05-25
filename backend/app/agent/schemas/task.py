@@ -1,8 +1,10 @@
 from typing import List, Optional
-from app.agent.schemas.types import ResourceType, UrgencyLevel
+from app.agent.schemas.types import AcceptedType, ResourceType, UrgencyLevel
+from app.agent.schemas.resource import Resource
+from app.agent.schemas.volunteer import Volunteer
 from pydantic import BaseModel
 
-class Resource(BaseModel):
+class ResourceRequirement(BaseModel):
     resource_type: ResourceType
     quantity: int
 
@@ -10,5 +12,18 @@ class Task(BaseModel):
     name: str
     description: str
     urgency: UrgencyLevel
-    resource_requirements: Optional[List[Resource]]
+    resource_requirements: Optional[List[ResourceRequirement]]
     manpower_requirement: Optional[int]
+
+class ResourceAllocation(BaseModel):
+    resource: Resource
+    accepted: AcceptedType
+
+class VolunteerAllocation(BaseModel):
+    volunteer: Volunteer
+    accepted: AcceptedType
+
+class TaskAllocation(BaseModel):
+    task: Task
+    resource_allocations: Optional[List[ResourceAllocation]]
+    volunteer_allocations: Optional[List[VolunteerAllocation]]

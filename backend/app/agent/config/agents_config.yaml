@@ -15,6 +15,10 @@ nodes:
     module: "app.agent.agents.agent_task.AgentTask"
     description: "Handle task creation"
 
+  - name: agent_allocation
+    module: "app.agent.agents.agent_allocation.AgentAllocation"
+    description: "Handle resource and manpower allocation to tasks"
+
 edges:
   - type: direct
     from: start
@@ -27,6 +31,7 @@ edges:
       agent_intake: agent_intake
       agent_incident: agent_incident
       agent_task: agent_task
+      agent_allocation: agent_allocation
       END: __end__
 
   - type: conditional

@@ -19,6 +19,7 @@ class Action(str, Enum):
     request_extraction = 'request_extraction'
     incident_assignment = 'incident_assignment'
     task_creation = 'task_creation'
+    task_allocation = 'task_allocation'
 
 class ResourceType(str, Enum):
     VEHICLE = "vehicle"
@@ -33,3 +34,17 @@ class ResourceType(str, Enum):
     SANITATION_KIT = "sanitation_kit"
     FUEL = "fuel"
     MEDICAL_KIT = "medical_kit"
+
+class DonorType(str, Enum):
+    VOLUNTEER = 'volunteer'
+    ADMIN = "admin"
+
+class StatusType(str, Enum):
+    ACTIVE = 'active'
+    INACTIVE = "inactive"
+    IN_USE = 'in_use'
+
+class AcceptedType(str, Enum):
+    YES = 'yes'
+    NO = 'no'
+    PENDING = 'pending'

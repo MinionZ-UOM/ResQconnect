@@ -16,3 +16,12 @@ async def ask(
     response = manager.run(body)
     
     return response   
+
+# @router.post("/visualize", response_model=str)
+# async def ask():  
+    
+#     manager = Manager()
+
+#     path = manager.visualize()
+    
+#     return path   
