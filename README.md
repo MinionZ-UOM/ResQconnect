@@ -19,7 +19,7 @@ Create a `.env` file in the `backend` directory and define the following environ
 ```env
 GOOGLE_APPLICATION_CREDENTIALS=app/secrets/firebase_cred.json
 GROQ_API_KEY=your_api_key
-
+```
 3. **create virtual environment**
    - create a virtual environment if you don't have one installed:
      ```bash
