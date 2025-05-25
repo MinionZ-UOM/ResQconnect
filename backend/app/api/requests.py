@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status ,BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from app.schemas.request import Request, RequestCreate, RequestStatusUpdate
 from app.schemas.user import User
@@ -6,11 +6,12 @@ from app.core.permissions import require_perms
 from app.api.deps import get_current_user
 from app.crud import request as crud
 
-from app.celery_config import run_agentic_workflow
+# Import both the task and the Celery app itself
+from app.celery_config import run_agentic_workflow, celery_app
 
 router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False)
 
-# - create -
+
 @router.post(
     "",
     response_model=Request,
@@ -26,13 +27,12 @@ router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False
 )
 async def create_request(
     payload: RequestCreate,
-    background_tasks: BackgroundTasks,
     current: User = Depends(get_current_user)
 ):
-    # Step 1: Create the request in the database
+    # Create the request in the database
     request = crud.create(current.uid, payload)
 
-    # Step 2: Prepare the payload for the agentic workflow
+    # Build the agentic payload
     agent_payload = {
         "previous_action": None,
         "next_action": "request_extraction",
@@ -43,7 +43,7 @@ async def create_request(
             "original_request_voice_available": False,
             "original_request_voice": "",
             "extracted_request_voice": None,
-            "original_request_image_available": True,
+            "original_request_image_available": bool(request.media),
             "original_request_image": request.media[0].url if request.media else None,
             "extracted_request_image": None,
             "coordinates": {
@@ -61,11 +61,21 @@ async def create_request(
         "tasks": None
     }
 
-    # Step 3: Trigger the Celery task to run the agentic workflow asynchronously
-    run_agentic_workflow.apply_async(args=[agent_payload])
+    # Enqueue the task using a borrowed Celery connection
+    try:
+        with celery_app.connection_or_acquire() as conn:
+            run_agentic_workflow.apply_async(
+                args=[agent_payload],
+                connection=conn
+            )
+    except Exception as e:
+        # If Redis is exhausted or channel borrowing fails
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to enqueue agentic task: {e}"
+        )
 
     return request
-
 
 # - list -
 @router.get(
