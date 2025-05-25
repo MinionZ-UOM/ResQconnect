@@ -1,0 +1,62 @@
+[
+    {
+        "disaster_id": "1",
+        "disaster_type": "Flood",
+        "disaster_coordinates": {
+            "latitude": 28.6139,
+            "longitude": 77.209
+        },
+        "disaster_location": "Delhi",
+        "disaster_summary": "Flooding in low-lying area, people stranded on rooftops"
+    },
+    {
+        "disaster_id": "2",
+        "disaster_type": "Earthquake",
+        "disaster_coordinates": {
+            "latitude": 34.0522,
+            "longitude": -118.2437
+        },
+        "disaster_location": "Los Angeles, California",
+        "disaster_summary": "Severe structural damage reported after 6.8 magnitude quake"
+    },
+    {
+        "disaster_id": "3",
+        "disaster_type": "Fire",
+        "disaster_coordinates": {
+            "latitude": 51.5074,
+            "longitude": -0.1278
+        },
+        "disaster_location": "London, UK",
+        "disaster_summary": "Fire in residential building, multiple evacuations underway"
+    },
+    {
+        "disaster_id": "4",
+        "disaster_type": "Cyclone",
+        "disaster_coordinates": {
+            "latitude": 19.076,
+            "longitude": 72.8777
+        },
+        "disaster_location": "Mumbai, India",
+        "disaster_summary": "High winds and coastal flooding due to incoming cyclone"
+    },
+    {
+        "disaster_id": "5",
+        "disaster_type": "Landslide",
+        "disaster_coordinates": {
+            "latitude": 27.7172,
+            "longitude": 85.324
+        },
+        "disaster_location": "Kathmandu, Nepal",
+        "disaster_summary": "Landslide blocks major road, rescue operations ongoing"
+    },
+    {
+        "disaster_id": "6",
+        "disaster_type": "tsunami",
+        "disaster_coordinates": {
+            "latitude": 28.6517,
+            "longitude": 77.1902
+        },
+        "disaster_location": "Delhi",
+        "disaster_summary": "Tsunami rescue needed urgently"
+    }
+]

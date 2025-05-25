@@ -17,7 +17,7 @@ class TypeOfNeed(str, Enum):
 
 class Action(str, Enum):
     request_extraction = 'request_extraction'
-    incident_assignment = 'incident_assignment'
+    disaster_assignment = 'disaster_assignment'
     task_creation = 'task_creation'
     task_allocation = 'task_allocation'
 

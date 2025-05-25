@@ -3,7 +3,7 @@ from app.agent.core.base_agent import BaseAgent
 from app.agent.schemas.state import State
 from app.agent.rag.rag import build_vectorstores_from_pdfs, retrieve_from_collection, parse_documents_to_text
 from app.agent.schemas.types import Action
-from app.agent.utils.observation import load_observations_by_incident_id
+from app.agent.utils.observation import load_observations_by_disaster_id
 from app.agent.schemas.task import Task
 from app.agent.config.llms_config_loader import LLMConfig
 from app.agent.utils.llm import GroqAgent
@@ -24,18 +24,18 @@ class AgentTask(BaseAgent):
             print(f'Error doing rag: {e}')
 
         top_k = 3
-        observations = load_observations_by_incident_id(state.request.incident_id, top_k=top_k)
+        observations = load_observations_by_disaster_id(state.request.disaster_id, top_k=top_k)
         
-        # Safety check for state.request and state.incident before accessing .dict()
+        # Safety check for state.request and state.disaster before accessing .dict()
         if not state.request:
             print("Error: 'state.request' is None. Cannot proceed with task creation.")
             return state
         
-        if not state.incident:
-            print("Error: 'state.incident' is None. Cannot proceed with task creation.")
+        if not state.disaster:
+            print("Error: 'state.disaster' is None. Cannot proceed with task creation.")
             return state
 
-        # Proceed with task creation only if state.request and state.incident are valid
+        # Proceed with task creation only if state.request and state.disaster are valid
         try:
             # Instantiate the agent and config
             groq_agent = GroqAgent()
@@ -44,12 +44,12 @@ class AgentTask(BaseAgent):
             system_prompt = f"""
             You are a task creation agent. 
             You will be provided with :
-                -request submitted by the affected individual of an incident
-                -information about the incident
+                -request submitted by the affected individual of an disaster
+                -information about the disaster
                 -latest {top_k} observations submitted by the volunteers at the spot
                 -disaster management guidelines retrieved from the vectorstore 
             Create tasks to be done in order to complete the request of the affected individual
-            only use the information about the incident and latest observations to get more current context.
+            only use the information about the disaster and latest observations to get more current context.
             do not create any task that is not related with the request submitted by the affected individual
 
             - create tasks as actionable steps to volunteers
@@ -62,9 +62,9 @@ class AgentTask(BaseAgent):
             request submitted by the affected  individual:
             {state.request.dict()}
 
-            Use the below info only to just get the current situation of the incident
-            information about the incident:
-            {state.incident.dict()}
+            Use the below info only to just get the current situation of the disaster
+            information about the disaster:
+            {state.disaster.dict()}
 
             latest {top_k} observations from the volunteers at the site:
             {[observation.dict() for observation in observations]}

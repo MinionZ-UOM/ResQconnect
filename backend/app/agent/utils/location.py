@@ -7,7 +7,7 @@ def get_location(coordinates: Coordinates) -> Optional[str]:
     print(f'lat:{coordinates.latitude}, lon:{coordinates.longitude}')
     
     try:
-        geolocator = Nominatim(user_agent="incident-locator")
+        geolocator = Nominatim(user_agent="disaster-locator")
         location = geolocator.reverse((coordinates.latitude, coordinates.longitude), exactly_one=True, timeout=10)
         return location.address if location else None
     except Exception as e:

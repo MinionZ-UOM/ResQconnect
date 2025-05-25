@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class Observation(BaseModel):
-    incident_id: int
+    disaster_id: str
     title: str
     description: str
     urgency: UrgencyLevel

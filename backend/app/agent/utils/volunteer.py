@@ -5,7 +5,7 @@ from typing import List
 from app.agent.schemas.volunteer import Volunteer
 
 
-def get_all_volunteers_by_incident(incident_id: int) -> List[Volunteer]:
+def get_all_volunteers_by_disaster(disaster_id: str) -> List[Volunteer]:
     VOLUNTEERS_FILE = "app/agent/data/volunteers.json"
     
     if not Path(VOLUNTEERS_FILE).exists():
@@ -16,7 +16,7 @@ def get_all_volunteers_by_incident(incident_id: int) -> List[Volunteer]:
     
     return [Volunteer(**vol) for vol in volunteers_data]
 
-def get_all_volunteer_ids_by_incident(incident_id: int) -> List[str]:
+def get_all_volunteer_ids_by_disaster(disaster_id: int) -> List[str]:
     RESOURCES_FILE = "app/agent/data/volunteers.json"
 
     if not Path(RESOURCES_FILE).exists():

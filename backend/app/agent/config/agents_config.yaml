@@ -7,9 +7,9 @@ nodes:
     module: "app.agent.agents.agent_intake.AgentIntake"
     description: "Extract information from request"
 
-  - name: agent_incident
-    module: "app.agent.agents.agent_incident.AgentIncident"
-    description: "Handle incident assignment or creation"
+  - name: agent_disaster
+    module: "app.agent.agents.agent_disaster.AgentDisaster"
+    description: "Handle disaster assignment or creation"
   
   - name: agent_task
     module: "app.agent.agents.agent_task.AgentTask"
@@ -29,7 +29,7 @@ edges:
     route: app.agent.routes.route_orchestrator.RouteOrchestrator
     to:
       agent_intake: agent_intake
-      agent_incident: agent_incident
+      agent_disaster: agent_disaster
       agent_task: agent_task
       agent_allocation: agent_allocation
       END: __end__
@@ -38,13 +38,13 @@ edges:
     from: agent_intake
     route: app.agent.routes.route_intake.RouteIntake
     to:
-      agent_incident: agent_incident
+      agent_disaster: agent_disaster
       agent_task: agent_task
       END: __end__
   
   - type: conditional
-    from: agent_incident
-    route: app.agent.routes.route_incident.RouteIncident
+    from: agent_disaster
+    route: app.agent.routes.route_disaster.RouteDisaster
     to:
       agent_task: agent_task
       END: __end__
