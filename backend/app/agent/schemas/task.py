@@ -27,3 +27,4 @@ class TaskAllocation(BaseModel):
     task: Task
     resource_allocations: Optional[List[ResourceAllocation]]
     volunteer_allocations: Optional[List[VolunteerAllocation]]
+
