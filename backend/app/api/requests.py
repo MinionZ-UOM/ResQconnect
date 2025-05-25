@@ -32,21 +32,21 @@ async def create_request(
     # Create the request in the database
     request = crud.create(current.uid, payload)
 
-    # print(f'request : {request}')
+    print(f'request : {request}')
 
     # Build the agentic payload
     agent_payload = {
         "previous_action": None,
         "next_action": "request_extraction",
         "request": {
-            "incident_id": int(request.disaster_id) if request.disaster_id is not None else None,
+            "incident_id": int(request.disaster_id),
             "original_request_text_available": True,
             "original_request_text": payload.description,
             "original_request_voice_available": False,
             "original_request_voice": "",
             "extracted_request_voice": None,
             "original_request_image_available": bool(request.media),
-            "original_request_image": request.media[0].url if request.media else None,
+            "original_request_image": request.media[0].url if request.media else "",
             "extracted_request_image": None,
             "coordinates": {
                 "latitude": request.location.lat,
@@ -60,9 +60,10 @@ async def create_request(
             "affected_people_count": None
         },
         "incident": None,
+        # Provide an empty list instead of None
+        "task_allocations": None,
         "tasks": None
     }
-
     # Enqueue the task using a borrowed Celery connection
     try:
         with celery_app.connection_or_acquire() as conn:
