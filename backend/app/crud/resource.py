@@ -110,3 +110,9 @@ def delete(rid: str) -> bool:
     doc_ref.delete()
     return True
 
+def set_status(rid: str, status: str) -> Resource:
+    _ref(rid).update({
+        "status": status,
+        "updated_at": datetime.now(timezone.utc)
+    })
+    return get(rid)
