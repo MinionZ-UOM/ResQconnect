@@ -95,7 +95,7 @@ export default function ResourcesPage() {
     setIsSubmitting(true);
 
     try {
-      const docRef = await addDoc(collection(db, "resources"), {
+      await addDoc(collection(db, "resources"), {
         category: resourceType,
         quantity_total: resourceQuantity,
         quantity_available: resourceQuantity,
@@ -107,10 +107,7 @@ export default function ResourcesPage() {
         updated_at: Timestamp.now(),
       });
 
-      // Refresh list
       await fetchResources(currentUid);
-
-      // Reset form
       setResourceType("");
       setResourceQuantity(1);
       setResourceLocationLat("");
@@ -124,6 +121,37 @@ export default function ResourcesPage() {
       setIsSubmitting(false);
     }
   };
+const handleDeleteResource = async (resourceId: string) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this resource?");
+  if (!confirmDelete) return;
+
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const token = await user.getIdToken(); // 🔐 Get Firebase ID token
+
+    const res = await fetch(`/api/resources/${resourceId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ✅ Pass token in Authorization header
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Failed to delete resource");
+    }
+
+    alert("Resource deleted successfully!");
+    await fetchResources(currentUid); 
+  } catch (err: any) {
+    console.error("Error deleting resource:", err);
+    alert(err.message || "An error occurred while deleting the resource");
+  }
+};
 
   const filteredResources = userResources.filter((r) => {
     const matchesSearch = searchQuery === "" || r.name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -143,6 +171,7 @@ export default function ResourcesPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
+      {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
@@ -225,12 +254,7 @@ export default function ResourcesPage() {
         </Dialog>
       </header>
 
-          <div className="container mx-auto p-4 md:p-6">
-      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-        </div>
-      </header>
-
+      {/* Filters */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Resource Filters</CardTitle>
@@ -290,6 +314,7 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
 
+      {/* Resource Table */}
       <Card>
         <CardHeader>
           <CardTitle>Resources</CardTitle>
@@ -324,7 +349,13 @@ export default function ResourcesPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon"><Trash className="h-4 w-4" /></Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteResource(r.id)}
+                        >
+                          <Trash className="h-4 w-4 text-red-500" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -341,7 +372,6 @@ export default function ResourcesPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
     </div>
   );
 }
