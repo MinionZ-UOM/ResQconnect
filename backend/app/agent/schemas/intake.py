@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class Request(BaseModel):
-    incident_id: Optional[int]
+    disaster_id: Optional[str]
     original_request_text_available: bool
     original_request_text: str
     original_request_voice_available: bool

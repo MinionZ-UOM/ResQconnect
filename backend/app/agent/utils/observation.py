@@ -2,12 +2,12 @@ import json
 from pathlib import Path
 from typing import List
 
-from app.agent.schemas.all import Observation
+from app.agent.schemas.observation import Observation
 # from app.agent.schemas.observation import Observation
 
 
-def load_observations_by_incident_id(incident_id: int, top_k: int) -> List[Observation]:
-    print('inside load_observations_by_incident_id tool')
+def load_observations_by_disaster_id(disaster_id: str, top_k: int) -> List[Observation]:
+    print('inside load_observations_by_disaster_id tool')
     
     OBSERVATIONS_FILE = "app/agent/data/observations.json"
 
@@ -18,11 +18,11 @@ def load_observations_by_incident_id(incident_id: int, top_k: int) -> List[Obser
         data = json.load(f)
     
 
-    # Filter observations by incident_id
+    # Filter observations by disaster_id
     observations = [
         Observation(**item)
         for item in data
-        if item["incident_id"] == incident_id
+        if item["disaster_id"] == disaster_id
     ]
 
     # Sort by posted_time descending and return the latest 3

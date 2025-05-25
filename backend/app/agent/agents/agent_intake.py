@@ -1,7 +1,7 @@
 from app.agent.core.base_agent import BaseAgent
 from app.agent.schemas.state import State
 from app.agent.schemas.types import Action
-from app.agent.utils.incident import get_incident_by_id
+from app.agent.utils.disaster import get_disaster_by_id
 from app.agent.utils.location import get_location
 from app.agent.utils.request import analyse_image, parse_text, stt
 
@@ -35,11 +35,11 @@ class AgentIntake(BaseAgent):
             state.request.affected_people_count = parsed_request.affected_people_count
 
         if state.previous_action is None:
-            if state.request.incident_id is None:
+            if state.request.disaster_id is None:
                 state.previous_action = Action.request_extraction
-                state.next_action = Action.incident_assignment
+                state.next_action = Action.disaster_assignment
             else:
-                state.incident = get_incident_by_id(state.request.incident_id)
+                state.disaster = get_disaster_by_id(state.request.disaster_id)
                 state.previous_action = Action.request_extraction
                 state.next_action = Action.task_creation
 
