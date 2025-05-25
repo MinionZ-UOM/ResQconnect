@@ -123,7 +123,6 @@ export default function NewRequestPage() {
           signature,
           expire,
         });
-        // Map ImageKit response → our MediaItem
         setMedia((prev) => [
           ...prev,
           {
@@ -137,7 +136,6 @@ export default function NewRequestPage() {
         ]);
       }
 
-      // Clear selection & previews
       setSelectedFiles([]);
     } catch (err) {
       console.error("Upload error:", err);
@@ -163,10 +161,9 @@ export default function NewRequestPage() {
       type_of_need: requestType,
       priority,
       location: { lat: location.latitude, lng: location.longitude },
-      media, // ← full array of MediaItem
+      media,
     };
 
-    console.log("Submitting payload:", payload);
     try {
       await callApi("requests", "POST", payload);
       alert("Request submitted!");
