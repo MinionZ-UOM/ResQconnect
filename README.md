@@ -12,13 +12,21 @@
      ```bash
      cd backend
      ```
-2. **create virtual environment**
+2. **Add Environment Variables**
+
+Create a `.env` file in the `backend` directory and define the following environment variables:
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS=app/secrets/firebase_cred.json
+GROQ_API_KEY=your_api_key
+
+3. **create virtual environment**
    - create a virtual environment if you don't have one installed:
      ```bash
      python -m venv env
      ```
 
-3. **Activate the Virtual Environment**
+4. **Activate the Virtual Environment**
    - Activate the virtual environment using the following command (Windows):
      ```bash
      .\env\Scripts\activate
@@ -28,15 +36,15 @@
      source env/bin/activate
      ```
 
-4. **Install Dependencies**
+5. **Install Dependencies**
    - Install the required Python packages by running:
      ```bash
      pip install -r requirements.txt
      ```
-5. **Create a folder named secrets inside the app folder and place the firebase_cred.json file inside it.**
+6. **Create a folder named secrets inside the app folder and place the firebase_cred.json file inside it.**
    - This is required to access firestore from the backend
 
-6. **Run the Application**
+7. **Run the Application**
    - Start the backend server with hot-reloading enabled:
      ```bash
      python -m uvicorn app.main:app --reload
