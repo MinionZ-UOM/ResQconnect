@@ -32,12 +32,14 @@ async def create_request(
     # Create the request in the database
     request = crud.create(current.uid, payload)
 
+    # print(f'request : {request}')
+
     # Build the agentic payload
     agent_payload = {
         "previous_action": None,
         "next_action": "request_extraction",
         "request": {
-            "incident_id": request.id,
+            "incident_id": int(request.disaster_id),
             "original_request_text_available": True,
             "original_request_text": payload.description,
             "original_request_voice_available": False,
