@@ -39,7 +39,7 @@ async def create_request(
         "previous_action": None,
         "next_action": "request_extraction",
         "request": {
-            "incident_id": int(request.disaster_id or None),
+            "incident_id": int(request.disaster_id) if request.disaster_id is not None else None,
             "original_request_text_available": True,
             "original_request_text": payload.description,
             "original_request_voice_available": False,
