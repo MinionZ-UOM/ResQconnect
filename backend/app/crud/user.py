@@ -47,3 +47,20 @@ def update_user_availability(uid: str, availability: bool) -> None:
 
     # perform the update
     users_ref().document(uid).update({"availability": availability})
+
+
+def get_user_availability(uid: str) -> bool:
+    """
+    Retrieve a volunteer’s availability flag from Firestore.
+    Raises 404 if user does not exist.
+    Returns False if availability has never been set.
+    """
+    doc_snap = users_ref().document(uid).get()
+    if not doc_snap.exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user_data = doc_snap.to_dict()
+    return user_data.get("availability", False)
