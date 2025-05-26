@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List
 from app.schemas.request import Request, RequestCreate, RequestStatusUpdate
 from app.schemas.user import User
@@ -39,7 +39,7 @@ async def create_request(
         "previous_action": None,
         "next_action": "request_extraction",
         "request": {
-            "incident_id": int(request.disaster_id),
+            "disaster_id": request.disaster_id,
             "original_request_text_available": True,
             "original_request_text": payload.description,
             "original_request_voice_available": False,
@@ -138,3 +138,16 @@ def update_request_status(
     if not crud.get(req_id):
         raise HTTPException(404, "Request not found")
     return crud.patch_status(req_id, payload)
+
+
+@router.get("/disaster/{disaster_id}", response_model=List[Request])
+def list_requests_by_disaster(disaster_id: str):
+    """
+    GET /requests/disaster/{disaster_id}
+    Returns only those requests which have a matching disaster_id.
+    """
+    results = crud.list_by_disaster(disaster_id)
+    if not results:
+        # Optional: return empty list or 404 if you prefer
+        return []
+    return results
