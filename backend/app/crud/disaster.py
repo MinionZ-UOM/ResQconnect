@@ -9,12 +9,16 @@ from app.schemas.disaster import DisasterCreate, DisasterResponse
 db = get_db()
 
 
-def create_disaster(payload: DisasterCreate, admin_uid: str) -> DisasterResponse:
+def create_disaster(
+    payload: DisasterCreate,
+    admin_uid: str = "",
+    is_agent_suggestion: bool = False,
+) -> DisasterResponse:
     batch = db.batch()
     disaster_ref = db.collection("disasters").document()
-    chat_ref     = db.collection("chatSessions").document()
-
+    chat_ref = db.collection("chatSessions").document()
     now = firestore.SERVER_TIMESTAMP
+
     batch.set(
         disaster_ref,
         {
@@ -22,10 +26,17 @@ def create_disaster(payload: DisasterCreate, admin_uid: str) -> DisasterResponse
             "created_at": now,
             "created_by": admin_uid,
             "chat_session_id": chat_ref.id,
-            "participants": [],  # ← initialize empty array
+            "participants": [],
+            "is_agent_suggestion": is_agent_suggestion,
         },
     )
-    batch.set(chat_ref, {"disaster_id": disaster_ref.id, "created_at": now})
+    batch.set(
+        chat_ref,
+        {
+            "disaster_id": disaster_ref.id,
+            "created_at": now,
+        },
+    )
     batch.commit()
 
     return DisasterResponse(
