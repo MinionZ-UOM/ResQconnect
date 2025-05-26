@@ -3,9 +3,12 @@ from typing import List, Optional
 from google.cloud.firestore import DocumentReference
 from app.core.firebase import get_db
 from app.schemas.resource import ResourceCreate, ResourceUpdate, Resource
+from app.schemas.resource import Resource, ResourceType
+
 
 COLLECTION = "resources"
 USER_COLLECTION = "users"
+
 
 def _ref(rid: str | None = None) -> DocumentReference:
     coll = get_db().collection(COLLECTION)
@@ -138,3 +141,33 @@ def set_status(rid: str, status: str) -> Resource:
         "updated_at": datetime.now(timezone.utc)
     })
     return get(rid)  
+
+
+def get_resources_by_ids_and_type(donor_ids: List[str], resource_type: str) -> List[Resource]:
+    """
+    Fetch all resources whose `uid` is in the provided donor_ids list
+    and whose category matches the given resource_type.
+    """
+    # Validate resource_type
+    try:
+        rt = ResourceType(resource_type)
+    except ValueError:
+        raise ValueError(f"Invalid resource_type: {resource_type}")
+
+    # Firestore only supports 'in' queries up to 10 items;
+    query = (
+        get_db()
+        .collection(COLLECTION)
+        .where("uid", "in", donor_ids)
+        .where("category", "==", rt.value)
+    )
+    resources: List[Resource] = []
+    for doc_snap in query.stream():
+        # reuse your `get()` to ensure role_id hydration and consistent mapping
+        res = get(doc_snap.id)
+        if res:
+            resources.append(res)
+        else:
+            print(f"[WARN] Skipping resource {doc_snap.id} (could not load)")
+    print(f"[INFO] resources fetched" , resources)
+    return resources
