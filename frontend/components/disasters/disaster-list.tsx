@@ -33,79 +33,8 @@ export function DisasterList() {
   if (loading) return <p>Loading disasters…</p>
   if (error)   return <p className="text-red-600">Error: {error}</p>
 
-
-
-
-  // Mock disaster data - in a real app, this would come from an API
-  /* 
-  const mockDisasters: Disaster[] = [
-    {
-      id: "disaster-001",
-      name: "California Wildfire",
-      type: "Wildfire",
-      status: "Active",
-      description: "Rapidly spreading wildfire in Northern California affecting multiple counties.",
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento, CA" },
-      affectedArea: { radius: 50 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-      severity: 4,
-      impactedPopulation: 25000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    },
-    {
-      id: "disaster-002",
-      name: "Hurricane Maria",
-      type: "Hurricane",
-      status: "Active",
-      description: "Category 3 hurricane approaching the Gulf Coast with heavy rainfall and strong winds.",
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston, TX" },
-      affectedArea: { radius: 100 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1), // 1 day ago
-      severity: 5,
-      impactedPopulation: 50000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "disaster-003",
-      name: "Midwest Flooding",
-      type: "Flood",
-      status: "Active",
-      description: "Severe flooding along the Mississippi River affecting multiple states.",
-      location: { latitude: 38.627, longitude: -90.1994, address: "St. Louis, MO" },
-      affectedArea: { radius: 75 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-      severity: 3,
-      impactedPopulation: 15000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    },
-    {
-      id: "disaster-004",
-      name: "Seattle Earthquake",
-      type: "Earthquake",
-      status: "Active",
-      description: "6.5 magnitude earthquake causing significant damage to infrastructure.",
-      location: { latitude: 47.6062, longitude: -122.3321, address: "Seattle, WA" },
-      affectedArea: { radius: 30 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
-      severity: 4,
-      impactedPopulation: 35000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
-    },
-  ]
-  */
-
   const filteredDisasters = filter === "All" ? disasters : disasters.filter((d) => d.type === filter)
   
-  //const filteredDisasters = filter === "All" ? mockDisasters : mockDisasters.filter((d) => d.type === filter)
-
   const disasterTypes: DisasterType[] = ["Flood", "Earthquake", "Wildfire", "Hurricane", "Tornado", "Other"]
 
   return (
