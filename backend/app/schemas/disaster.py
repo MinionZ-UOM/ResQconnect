@@ -18,3 +18,6 @@ class DisasterResponse(DisasterCreate):
     created_at: datetime
     created_by: str
     chat_session_id: str
+
+class JoinedResponse(BaseModel):
+    joined: bool
