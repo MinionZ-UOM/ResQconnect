@@ -33,12 +33,23 @@ export function DisasterList() {
   if (loading) return <p>Loading disasters…</p>
   if (error)   return <p className="text-red-600">Error: {error}</p>
 
-  const filteredDisasters = filter === "All" ? disasters : disasters.filter((d) => d.type === filter)
-  
-  const disasterTypes: DisasterType[] = ["Flood", "Earthquake", "Wildfire", "Hurricane", "Tornado", "Other"]
+  const filteredDisasters =
+    filter === "All"
+      ? disasters
+      : disasters.filter((d) => d.type === filter)
+
+  const disasterTypes: DisasterType[] = [
+    "Flood",
+    "Earthquake",
+    "Wildfire",
+    "Hurricane",
+    "Tornado",
+    "Other",
+  ]
 
   return (
     <div>
+      {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2 justify-center mb-6">
         <Button
           variant={filter === "All" ? "default" : "outline"}
@@ -61,13 +72,15 @@ export function DisasterList() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Disaster Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-28">
         {filteredDisasters.map((disaster) => (
           <Card key={disaster.id} className="overflow-hidden">
+            {/* Image & Header */}
             <div
-              className="h-48 bg-cover bg-center"
+              className="h-64 bg-cover bg-center"
               style={{
-                backgroundImage: `url('/placeholder.svg?height=300&width=600')`,
+                backgroundImage: `url('/placeholder.svg?height=400&width=600')`,
               }}
             >
               <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
@@ -77,29 +90,45 @@ export function DisasterList() {
                       disaster.severity >= 4
                         ? "bg-red-500"
                         : disaster.severity === 3
-                          ? "bg-orange-500"
-                          : "bg-yellow-500"
+                        ? "bg-orange-500"
+                        : "bg-yellow-500"
                     }
                   >
                     Severity: {disaster.severity}/5
                   </Badge>
-                  <h3 className="text-xl font-bold text-white mt-2">{disaster.name}</h3>
+                  <h3 className="text-2xl font-bold text-white mt-2">
+                    {disaster.name}
+                  </h3>
                 </div>
               </div>
             </div>
-            <CardContent className="p-4">
+
+            {/* Content */}
+            <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <AlertTriangle
-                  className={`h-10 w-10 p-2 rounded-full flex-shrink-0 ${
+                <div
+                  className={`h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0 ${
                     disaster.type === "Wildfire"
-                      ? "text-red-500 bg-red-100"
+                      ? "bg-red-100"
                       : disaster.type === "Hurricane"
-                        ? "text-blue-500 bg-blue-100"
-                        : disaster.type === "Flood"
-                          ? "text-cyan-500 bg-cyan-100"
-                          : "text-orange-500 bg-orange-100"
+                      ? "bg-blue-100"
+                      : disaster.type === "Flood"
+                      ? "bg-cyan-100"
+                      : "bg-orange-100"
                   }`}
-                />
+                >
+                  <AlertTriangle
+                    className={`h-8 w-8 ${
+                      disaster.type === "Wildfire"
+                        ? "text-red-500"
+                        : disaster.type === "Hurricane"
+                        ? "text-blue-500"
+                        : disaster.type === "Flood"
+                        ? "text-cyan-500"
+                        : "text-orange-500"
+                    }`}
+                  />
+                </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Badge variant="outline">{disaster.type}</Badge>
@@ -108,34 +137,45 @@ export function DisasterList() {
                         disaster.status === "Active"
                           ? "destructive"
                           : disaster.status === "Contained"
-                            ? "default"
-                            : "outline"
+                          ? "default"
+                          : "outline"
                       }
                     >
                       {disaster.status}
                     </Badge>
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{disaster.description}</p>
+                  <p className="text-base text-slate-600 dark:text-slate-400 line-clamp-2">
+                    {disaster.description}
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <div className="mt-4 space-y-2 text-base text-slate-600 dark:text-slate-400">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
+                  <MapPin className="h-5 w-5" />
                   <span>{disaster.location.address}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {/*<span>Started: {disaster.startDate.toLocaleDateString()}</span>*/}
-                  <span>Started: {disaster.startDate instanceof Date ? disaster.startDate.toLocaleDateString() : disaster.startDate}</span>
+                  <Calendar className="h-5 w-5" />
+                  <span>
+                    Started:{" "}
+                    {disaster.startDate instanceof Date
+                      ? disaster.startDate.toLocaleDateString()
+                      : disaster.startDate}
+                  </span>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="p-4 pt-0 flex justify-between items-center">
-              <div className="text-sm">
-                <span className="font-medium">{disaster.impactedPopulation?.toLocaleString()}</span> people affected
+
+            {/* Footer */}
+            <CardFooter className="p-6 pt-0 flex justify-between items-center">
+              <div className="text-base">
+                <span className="font-medium">
+                  {disaster.impactedPopulation?.toLocaleString()}
+                </span>{" "}
+                people affected
               </div>
-              <Button asChild size="sm">
+              <Button asChild size="default">
                 <Link href={`/disaster/${disaster.id}`}>
                   View Details <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
