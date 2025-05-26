@@ -32,6 +32,11 @@ export interface Disaster {
   chat_session_id: string
 }
 
+// shape returned by GET /disasters/{id}/joined
+interface JoinedResponse {
+  joined: boolean
+}
+
 interface DisasterListProps {
   role: string // e.g. "first-responder"
 }
@@ -50,11 +55,28 @@ export function DisasterList({ role }: DisasterListProps) {
     async function load() {
       console.groupCollapsed(`[Disasters] Loading started at ${new Date().toISOString()}`)
       try {
+        // 1) Load all disasters
         console.log("Calling GET /api/disasters…")
         const data = await callApi<Disaster[]>("disasters")
         console.log("Received data:", data)
         console.table(data)
         setDisasters(data)
+
+        // 2) For each disaster, check if already joined
+        const joinedSet = new Set<string>()
+        await Promise.all(
+          data.map(async (d) => {
+            try {
+              const res = await callApi<JoinedResponse>(`disasters/${d.id}/joined`)
+              if (res.joined) {
+                joinedSet.add(d.id)
+              }
+            } catch {
+              // on 404 or error, treat as not-joined; ignore
+            }
+          })
+        )
+        setJoinedIds(joinedSet)
       } catch (err: any) {
         console.error("Error loading disasters:", err)
         console.error(err.stack)
@@ -82,6 +104,23 @@ export function DisasterList({ role }: DisasterListProps) {
     } catch (e: any) {
       console.error("Join error:", e)
       alert("Could not join: " + e.message)
+    } finally {
+      setActiveDialogId(null)
+    }
+  }
+
+  const handleLeave = async (disasterId: string) => {
+    try {
+      // DELETE /api/disasters/{id}/leave
+      await callApi<void>(`disasters/${disasterId}/leave`, "DELETE")
+      setJoinedIds(prev => {
+        const next = new Set(prev)
+        next.delete(disasterId)
+        return next
+      })
+    } catch (e: any) {
+      console.error("Leave error:", e)
+      alert("Could not leave: " + e.message)
     } finally {
       setActiveDialogId(null)
     }
@@ -116,7 +155,32 @@ export function DisasterList({ role }: DisasterListProps) {
 
             <CardFooter className="flex justify-end space-x-2">
               {isJoined ? (
-                <Button disabled>Joined</Button>
+                <Dialog
+                  open={activeDialogId === d.id}
+                  onOpenChange={open => setActiveDialogId(open ? d.id : null)}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" onClick={() => setActiveDialogId(d.id)}>
+                      Leave
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Confirm Leave</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to leave this incident?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setActiveDialogId(null)}>
+                        No
+                      </Button>
+                      <Button variant="destructive" onClick={() => handleLeave(d.id)}>
+                        Yes, Leave
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               ) : (
                 <Dialog
                   open={activeDialogId === d.id}
