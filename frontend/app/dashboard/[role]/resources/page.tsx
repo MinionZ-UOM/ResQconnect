@@ -240,12 +240,12 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="w-screen -mx-4 md:-mx-6 p-4 md:p-6">
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
-            Resource Management
+              Resource Management
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Manage and track your resources
