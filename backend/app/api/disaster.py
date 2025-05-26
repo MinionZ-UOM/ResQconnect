@@ -6,6 +6,8 @@ from app.schemas.disaster import DisasterCreate, DisasterResponse
 from app.api.deps import get_current_user
 from app.core.permissions import require_perms as check_permission
 from app.crud import disaster as crud
+from app.schemas.disaster import JoinedResponse
+
 
 router = APIRouter(prefix="/disasters", tags=["Disasters"])
 
@@ -66,9 +68,22 @@ def join_disaster(
     return updated
 
 
-@router.delete("/{disaster_id}/leave", status_code=204)
-def leave_disaster(disaster_id: str, user=Depends(get_current_user)):
-    crud.leave_disaster(disaster_id, user.uid)
+@router.delete(
+    "/{disaster_id}/leave",
+    response_model=DisasterResponse,
+    status_code=status.HTTP_200_OK,
+)
+def leave_disaster(
+    disaster_id: str,
+    user=Depends(get_current_user),
+):
+    """
+    Remove the current user from the disaster, and return the updated disaster.
+    """
+    updated = crud.leave_disaster(disaster_id, user.uid)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
+    return updated
 
 
 @router.delete("/{disaster_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -84,3 +99,21 @@ def delete_disaster_endpoint(
         )
 
     crud.delete_disaster(disaster_id)
+
+
+@router.get(
+    "/{disaster_id}/joined",
+    response_model=JoinedResponse,
+    summary="Check if current user has joined a disaster"
+)
+def check_joined(
+    disaster_id: str,
+    user=Depends(get_current_user),
+):
+    joined = crud.has_joined(disaster_id, user.uid)
+    if joined is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Disaster not found"
+        )
+    return JoinedResponse(joined=joined)

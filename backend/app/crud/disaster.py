@@ -107,3 +107,20 @@ def delete_disaster(disaster_id: str) -> None:
         if chat_id:
             db.collection("chatSessions").document(chat_id).delete()
     doc_ref.delete()
+
+
+
+def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
+    """
+    Return:
+      - True  if the user UID is in the participants sub-collection
+      - False if the disaster exists but the user hasn’t joined
+      - None  if the disaster does not exist at all
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        return None
+
+    part_doc = doc_ref.collection("participants").document(uid).get()
+    return part_doc.exists

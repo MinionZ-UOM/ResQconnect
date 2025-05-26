@@ -1,4 +1,5 @@
 // frontend/app/dashboard/[role]/page.tsx
+import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,27 +21,26 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     .join(" ")
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="min-h-screen p-4 md:p-6">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
           Welcome, {roleTitle}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Select a disaster to begin
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Active Disasters</CardTitle>
+            <CardTitle className="text-xl">Active Disasters</CardTitle>
             <CardDescription>Requiring assistance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-              4
+            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+              3
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="text-base text-slate-500 dark:text-slate-400">
               <span className="text-red-500 dark:text-red-400">↑ 1</span> from
               yesterday
             </div>
@@ -49,14 +49,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Your Active Tasks</CardTitle>
+            <CardTitle className="text-xl">Your Active Tasks</CardTitle>
             <CardDescription>Assigned to you</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
               2
             </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="text-base text-slate-500 dark:text-slate-400">
               <Badge className="bg-yellow-500">In Progress</Badge>
             </div>
           </CardContent>
@@ -64,20 +64,20 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Recent Alerts</CardTitle>
+            <CardTitle className="text-xl">Recent Alerts</CardTitle>
             <CardDescription>Important notifications</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <span className="text-sm font-medium">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <span className="text-base font-medium">
                 Evacuation Order: North County
               </span>
             </div>
-            <div className="mt-2">
-              <Button variant="outline" size="sm" asChild>
+            <div className="mt-4">
+              <Button variant="outline" size="default" asChild>
                 <Link href={`/dashboard/${slug}/alerts`}>
-                  View All <ArrowRight className="ml-2 h-3 w-3" />
+                  View All <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </div>
@@ -87,13 +87,14 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Active Disasters</CardTitle>
-          <CardDescription>
-            Select a disaster to view details and provide assistance
+          <CardTitle className="text-xl">Active Disasters Near Your Area</CardTitle>
+          <CardDescription className="text-base">
+            Here are the disasters currently active in your region. Click on any disaster to view details and join efforts.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DisasterList />
+          {/* Pass the slug (e.g. "volunteer", "first-responder") to your list */}
+          <DisasterList role={slug} />
         </CardContent>
       </Card>
     </div>
