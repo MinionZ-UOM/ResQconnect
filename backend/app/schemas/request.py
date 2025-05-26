@@ -17,7 +17,7 @@ class Media(BaseModel):
 
 
 class RequestBase(BaseModel):
-    disaster_id: str = Field(
+    disaster_id: Optional[str] = Field(
         ..., description="Identifier for the associated disaster event", example="disaster_1234"
     )
     type_of_need: str = Field(..., examples=["food", "medical", "rescue", "other"])
