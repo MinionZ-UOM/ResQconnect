@@ -68,9 +68,22 @@ def join_disaster(
     return updated
 
 
-@router.delete("/{disaster_id}/leave", status_code=204)
-def leave_disaster(disaster_id: str, user=Depends(get_current_user)):
-    crud.leave_disaster(disaster_id, user.uid)
+@router.delete(
+    "/{disaster_id}/leave",
+    response_model=DisasterResponse,
+    status_code=status.HTTP_200_OK,
+)
+def leave_disaster(
+    disaster_id: str,
+    user=Depends(get_current_user),
+):
+    """
+    Remove the current user from the disaster, and return the updated disaster.
+    """
+    updated = crud.leave_disaster(disaster_id, user.uid)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
+    return updated
 
 
 @router.delete("/{disaster_id}", status_code=status.HTTP_204_NO_CONTENT)
