@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.firebase import verify_token, get_app          # ← updated
-from app.crud.user import create_user, get_user
-from app.schemas.user import User, UserCreate
+from app.crud.user import create_user, get_user, update_user_availability
+from app.schemas.user import User, UserCreate, AvailabilityUpdate
 from app.api.deps import (
     _parse_authorization_header,
     get_current_user,
@@ -35,3 +35,26 @@ async def register(
 @router.get("/me", response_model=User)
 async def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.patch(
+    "/me/availability",
+    response_model=User,
+    summary="Volunteers only: set your availability flag",
+)
+async def set_my_availability(
+    body: AvailabilityUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role_id != "volunteer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers may update availability"
+        )
+
+    update_user_availability(current_user.uid, body.availability)
+
+    updated = get_user(current_user.uid)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return updated

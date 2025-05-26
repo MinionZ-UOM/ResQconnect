@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
 
 class Role(BaseModel):
@@ -7,16 +8,18 @@ class Role(BaseModel):
     name: str
     permissions: List[str]
 
-
 class User(BaseModel):
     uid: str
     email: str
     display_name: Optional[str] = None
     role_id: str
     role: Optional[Role] = None
-
-
+    created_at: Optional[datetime] = None
+    availability: Optional[bool] = None 
 
 class UserCreate(BaseModel):
     display_name: str
     role_id: Optional[str] = None 
+
+class AvailabilityUpdate(BaseModel):
+    availability: bool
