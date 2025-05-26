@@ -15,18 +15,18 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
     dependencies=[require_perms("task:assign")]
 )
 def create_task(payload: TaskCreate):
-    return crud.create(payload)
+    return crud.create_task(payload)
 
 
 # --- list ---
 @router.get("/", response_model=list[Task], dependencies=[require_perms("task:read_all")])
 def list_tasks():
-    return crud.list_all()
+    return crud.list_tasks()
 
 
-@router.get("/me", response_model=list[Task], dependencies=[require_perms("task:read_own")],)
+@router.get("/me", response_model=list[Task], dependencies=[require_perms("task:read_own")])
 def my_tasks(current: User = Depends(get_current_user)):
-    return crud.list_by_assignee(current.uid)
+    return crud.list_tasks_by_assignee(current.uid)
 
 
 # --- detail ---
@@ -35,9 +35,9 @@ def read_task(
     task_id: str,
     current: User = Depends(get_current_user),
 ):
-    task = crud.get(task_id)
+    task = crud.get_task(task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
 
     # AuthZ: allow if read_all or it's assigned to me
     try:
@@ -55,13 +55,17 @@ def read_task(
     response_model=Task,
     dependencies=[require_perms("task:update_status")],
 )
-def update_task_status(task_id: str, payload: TaskStatusUpdate, current: User = Depends(get_current_user)):
-    task = crud.get(task_id)
+def update_task_status(
+    task_id: str,
+    payload: TaskStatusUpdate,
+    current: User = Depends(get_current_user),
+):
+    task = crud.get_task(task_id)
     if not task:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
 
     # owners can always update, others need task:read_all
     if task.assigned_to != current.uid:
         require_perms("task:read_all")(current)
 
-    return crud.update_status(task_id, payload)
+    return crud.update_task_status(task_id, payload)
