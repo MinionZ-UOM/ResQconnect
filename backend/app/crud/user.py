@@ -1,5 +1,5 @@
 from typing import Optional
-
+from fastapi import HTTPException, status
 from app.core.firebase import users_ref
 from app.schemas.user import User
 from google.cloud import firestore 
@@ -30,3 +30,20 @@ def create_user(
         },
         merge=True,
     )
+
+
+def update_user_availability(uid: str, availability: bool) -> None:
+    # fetch current user
+    user_doc = users_ref().document(uid).get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user_data = user_doc.to_dict()
+    if user_data.get("role_id") != "volunteer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers may set availability"
+        )
+
+    # perform the update
+    users_ref().document(uid).update({"availability": availability})

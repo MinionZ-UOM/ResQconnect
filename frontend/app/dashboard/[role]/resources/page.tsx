@@ -153,13 +153,13 @@ const handleDeleteResource = async (resourceId: string) => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const token = await user.getIdToken(); // 🔐 Get Firebase ID token
+    const token = await user.getIdToken(); 
 
     const res = await fetch(`/api/resources/${resourceId}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`, // ✅ Pass token in Authorization header
+        "Authorization": `Bearer ${token}`, 
       },
     });
 
@@ -240,12 +240,12 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="w-full max-w-screen-xl mx-auto px-4 md:px-6">
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
-            Resource Management
+              Resource Management
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
             Manage and track your resources

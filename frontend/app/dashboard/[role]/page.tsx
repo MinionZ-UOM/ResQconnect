@@ -1,4 +1,3 @@
-// frontend/app/dashboard/[role]/page.tsx
 import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -6,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { AlertTriangle, ArrowRight } from "lucide-react"
 import { DisasterList } from "@/components/disasters/disaster-list"
+import AvailabilityToggle from '@/components/availability-toggle'
+import AvailabilityCard from '@/components/availability-card'
 
 interface DashboardPageProps {
   params: Promise<{ role: string }>
@@ -30,7 +31,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">Active Disasters</CardTitle>
@@ -62,27 +63,31 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Recent Alerts</CardTitle>
-            <CardDescription>Important notifications</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-6 w-6 text-red-500" />
-              <span className="text-base font-medium">
-                Evacuation Order: North County
-              </span>
-            </div>
-            <div className="mt-4">
-              <Button variant="outline" size="default" asChild>
-                <Link href={`/dashboard/${slug}/alerts`}>
-                  View All <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {slug === 'volunteer' ? (
+          <AvailabilityCard />
+          ) : (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl">Recent Alerts</CardTitle>
+              <CardDescription>Important notifications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-6 w-6 text-red-500" />
+                <span className="text-base font-medium">
+                  Evacuation Order: North County
+                </span>
+              </div>
+              <div className="mt-4">
+                <Button variant="outline" size="default" asChild>
+                  <Link href={`/dashboard/${slug}/alerts`}>
+                    View All <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Card>
