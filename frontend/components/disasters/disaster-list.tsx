@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,34 @@ import type { Disaster, DisasterType } from "@/lib/types"
 
 export function DisasterList() {
   const [filter, setFilter] = useState<DisasterType | "All">("All")
+  const [disasters, setDisasters] = useState<Disaster[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch("/api/disasters")
+        if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
+        const data: Disaster[] = await res.json()
+        setDisasters(data)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  if (loading) return <p>Loading disasters…</p>
+  if (error)   return <p className="text-red-600">Error: {error}</p>
+
+
+
 
   // Mock disaster data - in a real app, this would come from an API
+  /* 
   const mockDisasters: Disaster[] = [
     {
       id: "disaster-001",
@@ -74,8 +100,11 @@ export function DisasterList() {
       updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
     },
   ]
+  */
 
-  const filteredDisasters = filter === "All" ? mockDisasters : mockDisasters.filter((d) => d.type === filter)
+  const filteredDisasters = filter === "All" ? disasters : disasters.filter((d) => d.type === filter)
+  
+  //const filteredDisasters = filter === "All" ? mockDisasters : mockDisasters.filter((d) => d.type === filter)
 
   const disasterTypes: DisasterType[] = ["Flood", "Earthquake", "Wildfire", "Hurricane", "Tornado", "Other"]
 
@@ -168,7 +197,8 @@ export function DisasterList() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>Started: {disaster.startDate.toLocaleDateString()}</span>
+                  {/*<span>Started: {disaster.startDate.toLocaleDateString()}</span>*/}
+                  <span>Started: {disaster.startDate instanceof Date ? disaster.startDate.toLocaleDateString() : disaster.startDate}</span>
                 </div>
               </div>
             </CardContent>
