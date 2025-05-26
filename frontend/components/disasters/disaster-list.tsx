@@ -1,4 +1,3 @@
-// frontend/components/disasters/DisasterList.tsx
 "use client"
 
 import React, { useEffect, useState } from "react"
@@ -47,18 +46,30 @@ export function DisasterList({ role }: DisasterListProps) {
   // Convert slug → API role: "first-responder" → "first_responder"
   const apiRole = role.replace("-", "_")
 
+  // Placeholder image URL
+  const PLACEHOLDER =
+    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+
   useEffect(() => {
     async function load() {
+      console.groupCollapsed(`[Disasters] Loading started at ${new Date().toISOString()}`)
       try {
-        // GET /api/disasters
+        console.log("Calling GET /api/disasters…")
         const data = await callApi<Disaster[]>("disasters")
+        console.log("Received data:", data)
+        console.table(data)
         setDisasters(data)
       } catch (err: any) {
+        console.error("Error loading disasters:", err)
+        console.error(err.stack)
         setError(err.message)
       } finally {
+        console.log(`Finished loading at ${new Date().toISOString()}`)
+        console.groupEnd()
         setLoading(false)
       }
     }
+
     load()
   }, [])
 
@@ -87,6 +98,9 @@ export function DisasterList({ role }: DisasterListProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {disasters.map(d => {
         const isJoined = joinedIds.has(d.id)
+        // use first URL or placeholder
+        const imgSrc = d.image_urls[0] ?? PLACEHOLDER
+
         return (
           <Card key={d.id} className="transition-shadow hover:shadow-lg">
             <CardHeader>
@@ -95,13 +109,13 @@ export function DisasterList({ role }: DisasterListProps) {
 
             <CardContent>
               <CardDescription>{d.description}</CardDescription>
-              {d.image_urls.length > 0 && (
-                <img
-                  src={d.image_urls[0]}
-                  alt={d.name}
-                  className="mt-4 w-full h-32 object-cover rounded"
-                />
-              )}
+              <img
+                src={imgSrc}
+                alt={d.image_urls.length > 0 ? d.name : "No image available"}
+                className={`mt-4 w-full h-32 object-cover rounded ${
+                  d.image_urls.length > 0 ? '' : 'opacity-50'
+                }`}
+              />
             </CardContent>
 
             <CardFooter className="flex justify-end space-x-2">
