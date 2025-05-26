@@ -1,25 +1,57 @@
+// frontend/components/disasters/DisasterList.tsx
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { ArrowRight, MapPin, Calendar, AlertTriangle } from "lucide-react"
-import type { Disaster, DisasterType } from "@/lib/types"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { callApi } from "@/lib/api"
 
-export function DisasterList() {
-  const [filter, setFilter] = useState<DisasterType | "All">("All")
+export interface Disaster {
+  id: string
+  name: string
+  description: string
+  location: { lat: number; lng: number }
+  image_urls: string[]
+  created_at: string
+  created_by: string
+  chat_session_id: string
+}
+
+interface DisasterListProps {
+  role: string // e.g. "first-responder"
+}
+
+export function DisasterList({ role }: DisasterListProps) {
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeDialogId, setActiveDialogId] = useState<string | null>(null)
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
+
+  // Convert slug → API role: "first-responder" → "first_responder"
+  const apiRole = role.replace("-", "_")
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/disasters")
-        if (!res.ok) throw new Error(`Fetch failed (${res.status})`)
-        const data: Disaster[] = await res.json()
+        // GET /api/disasters
+        const data = await callApi<Disaster[]>("disasters")
         setDisasters(data)
       } catch (err: any) {
         setError(err.message)
@@ -30,160 +62,86 @@ export function DisasterList() {
     load()
   }, [])
 
+  const handleJoin = async (disasterId: string) => {
+    try {
+      // POST /api/disasters/{id}/join
+      const updated = await callApi<Disaster>(
+        `disasters/${disasterId}/join`,
+        "POST",
+        { role: apiRole }
+      )
+      setJoinedIds(prev => new Set(prev).add(disasterId))
+      setDisasters(ds => ds.map(d => (d.id === disasterId ? updated : d)))
+    } catch (e: any) {
+      console.error("Join error:", e)
+      alert("Could not join: " + e.message)
+    } finally {
+      setActiveDialogId(null)
+    }
+  }
+
   if (loading) return <p>Loading disasters…</p>
-  if (error)   return <p className="text-red-600">Error: {error}</p>
-
-  const filteredDisasters =
-    filter === "All"
-      ? disasters
-      : disasters.filter((d) => d.type === filter)
-
-  const disasterTypes: DisasterType[] = [
-    "Flood",
-    "Earthquake",
-    "Wildfire",
-    "Hurricane",
-    "Tornado",
-    "Other",
-  ]
+  if (error) return <p className="text-red-500">Error: {error}</p>
 
   return (
-    <div>
-      {/* Filter Buttons */}
-      <div className="flex flex-wrap gap-2 justify-center mb-6">
-        <Button
-          variant={filter === "All" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setFilter("All")}
-          className="rounded-full"
-        >
-          All
-        </Button>
-        {disasterTypes.map((type) => (
-          <Button
-            key={type}
-            variant={filter === type ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(type)}
-            className="rounded-full"
-          >
-            {type}
-          </Button>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {disasters.map(d => {
+        const isJoined = joinedIds.has(d.id)
+        return (
+          <Card key={d.id} className="transition-shadow hover:shadow-lg">
+            <CardHeader>
+              <CardTitle>{d.name}</CardTitle>
+            </CardHeader>
 
-      {/* Disaster Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-28">
-        {filteredDisasters.map((disaster) => (
-          <Card key={disaster.id} className="overflow-hidden">
-            {/* Image & Header */}
-            <div
-              className="h-64 bg-cover bg-center"
-              style={{
-                backgroundImage: `url('/placeholder.svg?height=400&width=600')`,
-              }}
-            >
-              <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                <div>
-                  <Badge
-                    className={
-                      disaster.severity >= 4
-                        ? "bg-red-500"
-                        : disaster.severity === 3
-                        ? "bg-orange-500"
-                        : "bg-yellow-500"
-                    }
-                  >
-                    Severity: {disaster.severity}/5
-                  </Badge>
-                  <h3 className="text-2xl font-bold text-white mt-2">
-                    {disaster.name}
-                  </h3>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div
-                  className={`h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    disaster.type === "Wildfire"
-                      ? "bg-red-100"
-                      : disaster.type === "Hurricane"
-                      ? "bg-blue-100"
-                      : disaster.type === "Flood"
-                      ? "bg-cyan-100"
-                      : "bg-orange-100"
-                  }`}
-                >
-                  <AlertTriangle
-                    className={`h-8 w-8 ${
-                      disaster.type === "Wildfire"
-                        ? "text-red-500"
-                        : disaster.type === "Hurricane"
-                        ? "text-blue-500"
-                        : disaster.type === "Flood"
-                        ? "text-cyan-500"
-                        : "text-orange-500"
-                    }`}
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline">{disaster.type}</Badge>
-                    <Badge
-                      variant={
-                        disaster.status === "Active"
-                          ? "destructive"
-                          : disaster.status === "Contained"
-                          ? "default"
-                          : "outline"
-                      }
-                    >
-                      {disaster.status}
-                    </Badge>
-                  </div>
-                  <p className="text-base text-slate-600 dark:text-slate-400 line-clamp-2">
-                    {disaster.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2 text-base text-slate-600 dark:text-slate-400">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>{disaster.location.address}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>
-                    Started:{" "}
-                    {disaster.startDate instanceof Date
-                      ? disaster.startDate.toLocaleDateString()
-                      : disaster.startDate}
-                  </span>
-                </div>
-              </div>
+            <CardContent>
+              <CardDescription>{d.description}</CardDescription>
+              {d.image_urls.length > 0 && (
+                <img
+                  src={d.image_urls[0]}
+                  alt={d.name}
+                  className="mt-4 w-full h-32 object-cover rounded"
+                />
+              )}
             </CardContent>
 
-            {/* Footer */}
-            <CardFooter className="p-6 pt-0 flex justify-between items-center">
-              <div className="text-base">
-                <span className="font-medium">
-                  {disaster.impactedPopulation?.toLocaleString()}
-                </span>{" "}
-                people affected
-              </div>
-              <Button asChild size="default">
-                <Link href={`/disaster/${disaster.id}`}>
-                  View Details <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+            <CardFooter className="flex justify-end space-x-2">
+              {isJoined ? (
+                <Button disabled>Joined</Button>
+              ) : (
+                <Dialog
+                  open={activeDialogId === d.id}
+                  onOpenChange={open =>
+                    setActiveDialogId(open ? d.id : null)
+                  }
+                >
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setActiveDialogId(d.id)}>
+                      Join
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Confirm Association</DialogTitle>
+                      <DialogDescription>
+                        Are you associated with this incident?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveDialogId(null)}
+                      >
+                        No
+                      </Button>
+                      <Button onClick={() => handleJoin(d.id)}>Yes</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardFooter>
           </Card>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }

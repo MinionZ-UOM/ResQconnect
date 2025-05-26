@@ -1,4 +1,5 @@
 // frontend/app/dashboard/[role]/page.tsx
+import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -93,7 +94,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DisasterList />
+          {/* Pass the slug (e.g. "volunteer", "first-responder") to your list */}
+          <DisasterList role={slug} />
         </CardContent>
       </Card>
     </div>
