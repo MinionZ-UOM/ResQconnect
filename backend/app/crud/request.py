@@ -68,3 +68,15 @@ def patch_status(req_id: str, payload: RequestStatusUpdate) -> Request:
     data["updated_at"] = datetime.now(timezone.utc)
     _ref(req_id).update(data)
     return get(req_id)
+
+def list_by_disaster(disaster_id: str) -> List[Request]:
+    """
+    Return all Request models whose 'disaster_id' field equals the given value.
+    """
+    qs = (
+        get_db()
+        .collection(COLLECTION)
+        .where("disaster_id", "==", disaster_id)
+        .stream()
+    )
+    return [_snap_to_model(s) for s in qs]
