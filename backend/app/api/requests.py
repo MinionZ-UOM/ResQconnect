@@ -39,7 +39,7 @@ async def create_request(
         "previous_action": None,
         "next_action": "request_extraction",
         "request": {
-            "incident_id": int(request.disaster_id),
+            "disaster_id": request.disaster_id,
             "original_request_text_available": True,
             "original_request_text": payload.description,
             "original_request_voice_available": False,
@@ -59,7 +59,7 @@ async def create_request(
             "disaster_type": None,
             "affected_people_count": None
         },
-        "incident": None,
+        "disaster": None,
         # Provide an empty list instead of None
         "task_allocations": None,
         "tasks": None
