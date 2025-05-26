@@ -46,10 +46,6 @@ export function DisasterList({ role }: DisasterListProps) {
   // Convert slug → API role: "first-responder" → "first_responder"
   const apiRole = role.replace("-", "_")
 
-  // Placeholder image URL
-  const PLACEHOLDER =
-    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
-
   useEffect(() => {
     async function load() {
       console.groupCollapsed(`[Disasters] Loading started at ${new Date().toISOString()}`)
@@ -98,24 +94,24 @@ export function DisasterList({ role }: DisasterListProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {disasters.map(d => {
         const isJoined = joinedIds.has(d.id)
-        // use first URL or placeholder
-        const imgSrc = d.image_urls[0] ?? PLACEHOLDER
+        const hasImage = d.image_urls.length > 0
+        const imgSrc = hasImage ? d.image_urls[0] : "/placeholder.svg?height=300&width=600"
 
         return (
-          <Card key={d.id} className="transition-shadow hover:shadow-lg">
-            <CardHeader>
-              <CardTitle>{d.name}</CardTitle>
-            </CardHeader>
+          <Card key={d.id} className="transition-shadow hover:shadow-lg overflow-hidden">
+            <div
+              className="h-48 bg-cover bg-center"
+              style={{ backgroundImage: `url('${imgSrc}')` }}
+            >
+              <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">{d.name}</h3>
+                </div>
+              </div>
+            </div>
 
             <CardContent>
-              <CardDescription>{d.description}</CardDescription>
-              <img
-                src={imgSrc}
-                alt={d.image_urls.length > 0 ? d.name : "No image available"}
-                className={`mt-4 w-full h-32 object-cover rounded ${
-                  d.image_urls.length > 0 ? '' : 'opacity-50'
-                }`}
-              />
+              <CardDescription className="mt-2">{d.description}</CardDescription>
             </CardContent>
 
             <CardFooter className="flex justify-end space-x-2">
@@ -124,14 +120,10 @@ export function DisasterList({ role }: DisasterListProps) {
               ) : (
                 <Dialog
                   open={activeDialogId === d.id}
-                  onOpenChange={open =>
-                    setActiveDialogId(open ? d.id : null)
-                  }
+                  onOpenChange={open => setActiveDialogId(open ? d.id : null)}
                 >
                   <DialogTrigger asChild>
-                    <Button onClick={() => setActiveDialogId(d.id)}>
-                      Join
-                    </Button>
+                    <Button onClick={() => setActiveDialogId(d.id)}>Join</Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -141,10 +133,7 @@ export function DisasterList({ role }: DisasterListProps) {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setActiveDialogId(null)}
-                      >
+                      <Button variant="outline" onClick={() => setActiveDialogId(null)}>
                         No
                       </Button>
                       <Button onClick={() => handleJoin(d.id)}>Yes</Button>
