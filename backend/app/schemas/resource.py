@@ -30,7 +30,10 @@ class ResourceBase(BaseModel):
     status: ResourceStatus = ResourceStatus.AVAILABLE
 
 class ResourceCreate(ResourceBase):
-    uid: str  # user ID who is creating the resource
+    uid: str  
+
+class StatusChangePayload(BaseModel):
+    status: ResourceStatus
 
 class ResourceUpdate(BaseModel):
     quantity_used: Optional[int] = None
@@ -46,3 +49,4 @@ class Resource(ResourceBase):
 
     class Config:
         orm_mode = True
+

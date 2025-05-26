@@ -32,6 +32,7 @@ ROLES = {
         "permissions": [
             "task:read_own",
             "task:update_status",
+            "resource:*",
         ],
     },
     "affected_individual": {

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.schemas.resource import ResourceCreate, Resource, ResourceUpdate
+from app.schemas.resource import ResourceCreate, Resource, ResourceUpdate, StatusChangePayload
 from app.core.permissions import require_perms
 from app.crud import resource as crud
 
@@ -70,3 +70,33 @@ def update_resource(rid: str, payload: ResourceUpdate):
         return crud.patch(rid, payload)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+    
+
+@router.delete(
+    "/{rid}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    dependencies=[require_perms("resource:delete")]
+)
+def delete_resource(rid: str):
+    try:
+        crud.delete(rid)
+        return {"detail": "Resource deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+
+@router.put(
+    "/{rid}/status",
+    response_model=Resource,
+    status_code=status.HTTP_200_OK,
+    dependencies=[require_perms("resource:update")]
+)
+def change_resource_status(rid: str, payload: StatusChangePayload):
+    try:
+        return crud.set_status(rid, payload.status.value)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
