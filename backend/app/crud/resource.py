@@ -33,7 +33,29 @@ def create(obj_in: ResourceCreate) -> Resource:
 
 def get(rid: str) -> Optional[Resource]:
     snap = _ref(rid).get()
-    return Resource(resource_id=snap.id, **snap.to_dict()) if snap.exists else None
+    if not snap.exists:
+        return None
+
+    data = snap.to_dict()
+
+    if "role_id" not in data or not data["role_id"]:
+        uid = data.get("uid")
+        if not uid:
+            raise ValueError(f"Cannot resolve 'role_id': UID is missing in resource {rid}")
+
+        user_snap = get_db().collection(USER_COLLECTION).document(uid).get()
+        if not user_snap.exists:
+            raise ValueError(f"User not found for UID: {uid}")
+
+        role_id = user_snap.to_dict().get("role_id")
+        if not role_id:
+            raise ValueError(f"role_id missing in user profile for UID: {uid}")
+
+        _ref(rid).update({"role_id": role_id})
+        data["role_id"] = role_id
+
+    return Resource(resource_id=snap.id, **data)
+
 
 def list_all() -> List[Resource]:
     resources = []
@@ -115,4 +137,4 @@ def set_status(rid: str, status: str) -> Resource:
         "status": status,
         "updated_at": datetime.now(timezone.utc)
     })
-    return get(rid)
+    return get(rid)  
