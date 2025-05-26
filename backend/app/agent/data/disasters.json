@@ -1,6 +1,6 @@
 [
     {
-        "disaster_id": "1",
+        "disaster_id": "b3S1VXDbwrHVdByRBx0B",
         "disaster_type": "Flood",
         "disaster_coordinates": {
             "latitude": 28.6139,
@@ -58,5 +58,15 @@
         },
         "disaster_location": "Delhi",
         "disaster_summary": "Tsunami rescue needed urgently"
+    },
+    {
+        "disaster_id": "Savinu",
+        "disaster_type": "cyclone",
+        "disaster_coordinates": {
+            "latitude": 6.72,
+            "longitude": 79.9599
+        },
+        "disaster_location": "Kurusa Handiya, Bandaragama DS Division, Kalutara District, Western Province, 12530, Sri Lanka",
+        "disaster_summary": "A cyclone is reported in the area of Kurusa Handiya, Bandaragama DS Division, Kalutara District, Western Province, 12530, Sri Lanka"
     }
 ]

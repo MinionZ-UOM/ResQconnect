@@ -45,12 +45,15 @@ class AgentDisaster(BaseAgent):
             response_model=Optional[str]
         )
 
-        if disaster_id:
+        print(f"Disaster ID returned: {disaster_id}")
+
+        if not (disaster_id == None or disaster_id == 'None'): 
             state.request.disaster_id = disaster_id
             state.disaster = get_disaster_by_id(disaster_id)
         else:
             disasters = load_disasters()
-            new_disaster_id = disasters[-1].disaster_id + 1
+            # firestore needs to handle this creation
+            new_disaster_id = "Savinu"
 
             system_prompt = """
             You are an disaster creating agent. You will be provided with new disaster id and a request.
