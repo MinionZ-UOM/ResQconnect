@@ -46,7 +46,7 @@ import {
 import { Plus, Search, Edit, Trash, MapPin } from "lucide-react";
 import type { Resource, ResourceType, ResourceStatus } from "@/lib/types";
 import { db } from "@/lib/firebaseClient";
-import { collection, query, where, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { collection, query, where, doc, getDoc, getDocs, addDoc, Timestamp } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function ResourcesPage() {
@@ -127,6 +127,7 @@ export default function ResourcesPage() {
       setIsSubmitting(false);
     }
   };
+
 const handleDeleteResource = async (resourceId: string) => {
   const confirmDelete = window.confirm("Are you sure you want to delete this resource?");
   if (!confirmDelete) return;
@@ -160,8 +161,7 @@ const handleDeleteResource = async (resourceId: string) => {
 };
 
 const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceStatus) => {
-  const nextStatus: ResourceStatus =
-    currentStatus === "Available" ? "Not_Available" : "Available";
+  const nextStatus: ResourceStatus = currentStatus === "Available" ? "Not_Available" : "Available";
 
   const confirmUpdate = window.confirm(`Change status to ${nextStatus}?`);
   if (!confirmUpdate) return;
@@ -171,16 +171,25 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const token = await user.getIdToken();
+    const token = await user.getIdToken(); 
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userDocRef);
+    if (!userSnap.exists()) throw new Error("User data not found in Firestore");
+
+    const userData = userSnap.data();
+    const role_id = userData.role_id;
+    if (!role_id) throw new Error("role_id missing for user");
 
     const res = await fetch(`/api/resources/${resourceId}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
-        status: nextStatus.toLowerCase(), // backend expects "available" or "not_available"
+        status: nextStatus.toLowerCase(), // "available" or "not_available"
+        role_id, 
       }),
     });
 
@@ -196,6 +205,7 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
     alert(err.message || "An error occurred while updating status");
   }
 };
+
 
   const filteredResources = userResources.filter((r) => {
     const matchesSearch = searchQuery === "" || r.name?.toLowerCase().includes(searchQuery.toLowerCase());
