@@ -27,7 +27,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           Welcome, {roleTitle}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Select a disaster to begin
         </p>
       </header>
 
@@ -39,7 +38,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-              4
+              3
             </div>
             <div className="text-base text-slate-500 dark:text-slate-400">
               <span className="text-red-500 dark:text-red-400">↑ 1</span> from
@@ -88,9 +87,9 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Active Disasters</CardTitle>
+          <CardTitle className="text-xl">Active Disasters Near Your Area</CardTitle>
           <CardDescription className="text-base">
-            Select a disaster to view details and provide assistance
+            Here are the disasters currently active in your region. Click on any disaster to view details and join efforts.
           </CardDescription>
         </CardHeader>
         <CardContent>
