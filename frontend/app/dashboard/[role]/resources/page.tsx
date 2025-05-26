@@ -96,37 +96,53 @@ export default function ResourcesPage() {
     return () => unsubscribe();
   }, []);
 
-  const handleAddResource = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+const handleAddResource = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      await addDoc(collection(db, "resources"), {
-        category: resourceType,
-        quantity_total: resourceQuantity,
-        quantity_available: resourceQuantity,
-        location_lat: parseFloat(resourceLocationLat),
-        location_lng: parseFloat(resourceLocationLng),
-        status: "available",
-        uid: currentUid,
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-      });
+  try {
+    const userDocRef = doc(db, "users", currentUid);
+    const userSnap = await getDoc(userDocRef);
 
-      await fetchResources(currentUid);
-      setResourceType("");
-      setResourceQuantity(1);
-      setResourceLocationLat("");
-      setResourceLocationLng("");
-      setIsAddDialogOpen(false);
-      alert("Resource added successfully!");
-    } catch (error) {
-      console.error("Error adding resource:", error);
-      alert("Error adding resource. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    if (!userSnap.exists()) {
+      throw new Error("User profile not found in Firestore");
     }
-  };
+
+    const userData = userSnap.data();
+    const role_id = userData.role_id;
+
+    if (!role_id) {
+      throw new Error("role_id missing in user profile");
+    }
+
+    await addDoc(collection(db, "resources"), {
+      category: resourceType,
+      quantity_total: resourceQuantity,
+      quantity_available: resourceQuantity,
+      location_lat: parseFloat(resourceLocationLat),
+      location_lng: parseFloat(resourceLocationLng),
+      status: "available",
+      uid: currentUid,
+      role_id, 
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    });
+
+    await fetchResources(currentUid);
+    setResourceType("");
+    setResourceQuantity(1);
+    setResourceLocationLat("");
+    setResourceLocationLng("");
+    setIsAddDialogOpen(false);
+    alert("Resource added successfully!");
+  } catch (error) {
+    console.error("Error adding resource:", error);
+    alert(error.message || "Error adding resource. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
 const handleDeleteResource = async (resourceId: string) => {
   const confirmDelete = window.confirm("Are you sure you want to delete this resource?");
