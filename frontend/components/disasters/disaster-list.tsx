@@ -38,10 +38,11 @@ interface JoinedResponse {
 }
 
 interface DisasterListProps {
-  role: string // e.g. "first-responder"
+  role?: string // e.g. "first-responder"
 }
 
-export function DisasterList({ role }: DisasterListProps) {
+
+export function DisasterList({ role = "default-role" }: DisasterListProps) {
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
