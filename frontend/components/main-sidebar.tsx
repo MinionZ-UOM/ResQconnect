@@ -92,11 +92,7 @@ export function MainSidebar({
         href: `/dashboard/${roleSlug}/communication${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: MessageSquare,
       },
-      // {
-      //   title: "Resources",
-      //   href: `/dashboard/${roleSlug}/resources${disasterId ? `?disasterId=${disasterId}` : ""}`,
-      //   icon: Package,
-      // },
+// (No replacement lines; the block is removed entirely)
     ],
     Volunteer: [
       {
