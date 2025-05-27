@@ -231,11 +231,14 @@ export default function ResponderTasksPage() {
                       <Button size="sm" variant="outline" onClick={() => openDetails(t)}>
                         View
                       </Button>
-                      {!t.assigned_to && (
+                      {/* {!t.assigned_to && (
                         <Button size="sm" onClick={() => openAssign(t)}>
                           Assign
-                        </Button>
-                      )}
+                        </Button> */}
+                    <Button size="sm" onClick={() => openAssign(t)}>
+                        Assign
+                    </Button>
+                      {/* )} */}
                     </TableCell>
                   </TableRow>
                 ))}
