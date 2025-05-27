@@ -49,6 +49,24 @@ GROQ_API_KEY=your_api_key
      ```bash
      python -m uvicorn app.main:app --reload
      ```
+## Setting up celery with redis
+
+This project uses [Celery](https://docs.celeryq.dev/en/stable/) for asynchronous task processing and [Redis](https://redis.io/) as the message broker.
+
+### Environment Variables
+
+Before running the worker, set the following environment variables in your **terminal session**.
+```powershell
+$env:GROQ_API_KEY         = "your-groq-api-key-here"
+$env:LANGFUSE_SECRET_KEY  = "your-langfuse-secret-key-here"
+$env:LANGFUSE_PUBLIC_KEY  = "your-langfuse-public-key-here"
+$env:LANGFUSE_HOST        = "https://your-langfuse-host-url"
+```
+Then start the celery worker 
+```powershell
+celery -A app.celery_config.celery_app worker --loglevel=info --pool=solo
+```
+
 # Frontend Setup Guide
 
 1. **Open Terminal and Navigate to the Frontend Directory**
