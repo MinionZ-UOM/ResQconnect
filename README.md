@@ -55,13 +55,14 @@ This project uses [Celery](https://docs.celeryq.dev/en/stable/) for asynchronous
 
 ### Environment Variables
 
-Before running the worker, set the following environment variables in your **terminal session**.
+Before running the worker, set the following environment variables in your **terminal session** .
 ```powershell
 $env:GROQ_API_KEY         = "your-groq-api-key-here"
 $env:LANGFUSE_SECRET_KEY  = "your-langfuse-secret-key-here"
 $env:LANGFUSE_PUBLIC_KEY  = "your-langfuse-public-key-here"
 $env:LANGFUSE_HOST        = "https://your-langfuse-host-url"
 ```
+**note that you need to be inside the backend directory and your virtual environment should be activated**
 Then start the celery worker 
 ```powershell
 celery -A app.celery_config.celery_app worker --loglevel=info --pool=solo
