@@ -17,7 +17,8 @@ class Manager:
         self.langfuse_handler = CallbackHandler(
             secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
             public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
-            host=os.environ.get("LANGFUSE_HOST")
+            host=os.environ.get("LANGFUSE_HOST"),
+            trace_name='langgraph_resq_agent'
         )
 
     def _load_class(self, dotted_path: str):
