@@ -130,6 +130,24 @@ export default function AdminTasksPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+              <label className="block mb-1 font-medium">Disaster</label>
+              <Select
+                value={disasterFilter}
+                onValueChange={(v) => setDisasterFilter(v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  {disasters.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="block mb-1 font-medium">Priority</label>
               <Select
@@ -162,24 +180,6 @@ export default function AdminTasksPage() {
                   <SelectItem value="on_route">On Route</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block mb-1 font-medium">Disaster</label>
-              <Select
-                value={disasterFilter}
-                onValueChange={(v) => setDisasterFilter(v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  {disasters.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>
