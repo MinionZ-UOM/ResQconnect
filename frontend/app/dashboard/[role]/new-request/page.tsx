@@ -179,8 +179,8 @@ export default function NewRequestPage() {
   };
 
   return (
-    <div className="fixed top-0 bottom-0 left-64 right-0 overflow-auto px-4 md:px-6">
-      <h1 className="text-2xl md:text-3xl font-semibold mb-6">New Request</h1>
+    <div className="fixed top-0 bottom-0 left-10 md:left-64 right-0 overflow-auto px-4 md:px-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">New Request</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* — Disaster selector */}
         <div>

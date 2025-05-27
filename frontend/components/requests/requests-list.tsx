@@ -155,8 +155,8 @@ export function RequestsList({ role, filter }: RequestsListProps) {
 
   return (
     <>
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-auto w-full h-full">
+        <Table className="inline-block min-w-max">
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
