@@ -28,17 +28,17 @@ app.add_middleware(
 
 # Uncomment this ONLY when testing the backend Endpoints 
 
-if os.getenv("ENV", "development") == "development":
-    async def _fake_user() -> User:
-        return User(
-            uid="savinu",
-            email="dev@example.com",
-            role_id="affected_individual",          # role you want to test
-            display_name="savinu",
-            role=None,                
-        )
+# if os.getenv("ENV", "development") == "development":
+#     async def _fake_user() -> User:
+#         return User(
+#             uid="savinu",
+#             email="dev@example.com",
+#             role_id="affected_individual",          # role you want to test
+#             display_name="savinu",
+#             role=None,                
+#         )
 
-    app.dependency_overrides[get_current_user] = _fake_user
+#     app.dependency_overrides[get_current_user] = _fake_user
 
 
 app.include_router(requests_router)
