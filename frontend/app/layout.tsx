@@ -2,7 +2,7 @@
 
 import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar } from "@/components/ui/sidebar";
 import { AuthProvider, useAuth } from "@/hooks/AuthProvider";
 import { usePathname } from "next/navigation";
 import "./globals.css";
@@ -25,7 +25,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <MaybeSidebar>{children}</MaybeSidebar>
+            <SidebarProvider>
+              <WithOptionalSidebar>{children}</WithOptionalSidebar>
+            </SidebarProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
@@ -33,7 +35,7 @@ export default function RootLayout({
   );
 }
 
-function MaybeSidebar({ children }: { children: React.ReactNode }) {
+function WithOptionalSidebar({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const pathname = usePathname();
 
@@ -41,11 +43,16 @@ function MaybeSidebar({ children }: { children: React.ReactNode }) {
   if (loading) return null;
 
   // If no user, or we're on the public routes ("/" or "/auth/login or "/auth/signup"), don't show sidebar
-  const isOnLoginPage = pathname === "/" || pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signup");
-  if (!user || isOnLoginPage) {
+  const isPublicRoute = !user || pathname === "/" || pathname.startsWith("/auth/login");
+  
+    if (isPublicRoute) {
     return <>{children}</>;
   }
 
   // Otherwise user is logged in and not on a public page—show the sidebar
-  return <SidebarProvider>{children}</SidebarProvider>;
+  return (
+    <SidebarProvider>
+      <Sidebar>{children}</Sidebar>
+    </SidebarProvider>
+  );
 }

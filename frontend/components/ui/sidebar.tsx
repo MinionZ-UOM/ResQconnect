@@ -18,6 +18,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePathname } from "next/navigation"
+import { useAuth }     from "@/hooks/AuthProvider"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -148,11 +150,22 @@ const SidebarProvider = React.forwardRef<
             {...props}
           >
             {/* mobile-only hamburger trigger */}
-            {isMobile && (
-               <div className="fixed top-4 left-4 z-50 md:hidden">
-                 <SidebarTrigger aria-label="Open menu" />
-              </div>
-            )}
+            {(() => {
+              // don’t show on public routes or if not logged in
+              const pathname = usePathname()
+              const { user, loading } = useAuth()
+              const isPublicRoute =
+                !user ||
+                pathname === "/" ||
+                pathname.startsWith("/auth/login")
+
+              if (!isMobile || loading || isPublicRoute) return null
+              return (
+                <div className="fixed top-4 left-4 z-50 md:hidden">
+                  <SidebarTrigger aria-label="Open menu" />
+                </div>
+              )
+            })()}
             {children}
           </div>
         </TooltipProvider>
