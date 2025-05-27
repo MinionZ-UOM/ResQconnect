@@ -120,7 +120,6 @@ def delete_disaster(disaster_id: str) -> None:
     doc_ref.delete()
 
 
-
 def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
     """
     Return:
@@ -135,3 +134,40 @@ def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
 
     part_doc = doc_ref.collection("participants").document(uid).get()
     return part_doc.exists
+
+# --- Functions for Volunteers Retrieval ---
+
+def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
+    """
+    Return full participant records for volunteers (role='volunteer') in a disaster.
+    - Returns None if the disaster does not exist.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        return None
+
+    # Query volunteer participants from sub-collection
+    volunteer_docs = doc_ref.collection("participants") \
+                          .where("role", "==", "volunteer") \
+                          .stream()
+    volunteers = [{"uid": v.id, **(v.to_dict() or {})} for v in volunteer_docs]
+    return volunteers
+
+
+def get_all_volunteer_ids_by_disaster(disaster_id: str) -> Optional[List[str]]:
+    """
+    Return list of UIDs for volunteers (role='volunteer') in a disaster.
+    - Returns None if the disaster does not exist.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        return None
+
+    # Query volunteer participant IDs from sub-collection
+    volunteer_docs = doc_ref.collection("participants") \
+                          .where("role", "==", "volunteer") \
+                          .stream()
+    volunteer_ids = [v.id for v in volunteer_docs]
+    return volunteer_ids

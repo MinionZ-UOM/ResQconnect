@@ -49,8 +49,8 @@ async def create_request(
             "original_request_image": request.media[0].url if request.media else "",
             "extracted_request_image": None,
             "coordinates": {
-                "latitude": request.location.lat,
-                "longitude": request.location.lng
+                "lat": request.location.lat,
+                "lng": request.location.lng,
             },
             "location_from_coordinates": None,
             "location_from_input": None,
