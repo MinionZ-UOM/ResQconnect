@@ -154,14 +154,7 @@ export function MainSidebar({
       },
       { title: "Tasks", href: "/admin/tasks", icon: CheckSquare },
       { title: "Resources", href: "/admin/resources", icon: Package },
-      { title: "Users", href: "/admin/users", icon: Users },
       { title: "Alerts", href: "/admin/alerts", icon: Bell },
-      {
-        title: "Communication",
-        href: "/admin/communication",
-        icon: MessageSquare,
-      },
-      { title: "Settings", href: "/admin/settings", icon: Settings },
     ],
   } as const;
 
