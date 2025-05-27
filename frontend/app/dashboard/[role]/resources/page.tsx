@@ -240,7 +240,7 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
   };
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto px-4 md:px-6">
+    <div className="fixed top-0 bottom-0 left-64 right-0 overflow-auto px-4 md:px-6">
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
