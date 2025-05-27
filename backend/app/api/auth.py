@@ -58,3 +58,20 @@ async def set_my_availability(
     if not updated:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return updated
+
+
+@router.get(
+    "/me/availability",
+    response_model=AvailabilityUpdate,
+    summary="Volunteers only: get your current availability flag",
+)
+async def get_my_availability(
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role_id != "volunteer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers may read availability"
+        )
+    # Assuming `current_user` has an `availability: bool` field
+    return AvailabilityUpdate(availability=current_user.availability)
