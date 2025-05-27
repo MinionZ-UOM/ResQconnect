@@ -63,7 +63,7 @@ export default function Home() {
           </div>
         </section>
 
-
+        {/*
           <section className="mb-16">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-slate-800 dark:text-slate-200">
               Active Disasters
@@ -98,6 +98,7 @@ export default function Home() {
               </div>
             </div>
           </section>
+        */}
         </main>
       </div>
     </div>
