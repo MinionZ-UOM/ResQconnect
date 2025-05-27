@@ -165,7 +165,7 @@ const SidebarProvider = React.forwardRef<
                   <SidebarTrigger aria-label="Open menu" />
                 </div>
               )
-            })()}
+            })()}            
             {children}
           </div>
         </TooltipProvider>

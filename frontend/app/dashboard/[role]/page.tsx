@@ -21,8 +21,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
 
-  return (
-    <div className="container mx-auto p-4 md:p-6">
+  return (    
+    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">    
       <header className="mb-6 ml-8 md:ml-0">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
           Welcome, {roleTitle}
