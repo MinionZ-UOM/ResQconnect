@@ -19,7 +19,8 @@ def create_task(payload: TaskCreate):
 
 
 # --- list ---
-@router.get("/", response_model=list[Task], dependencies=[require_perms("task:read_all")])
+@router.get("", response_model=list[Task], dependencies=[require_perms("task:read_all")])
+@router.get("/", include_in_schema=False)  
 def list_tasks():
     return crud.list_tasks()
 
@@ -69,3 +70,17 @@ def update_task_status(
         require_perms("task:read_all")(current)
 
     return crud.update_task_status(task_id, payload)
+
+
+@router.patch(
+    "/{task_id}/authorize",
+    response_model=Task,
+    dependencies=[require_perms("task:authorize")],
+)
+def authorize_task_endpoint(
+    task_id: str,
+):
+    task = crud.get_task(task_id)
+    if not task:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+    return crud.authorize_task(task_id)
