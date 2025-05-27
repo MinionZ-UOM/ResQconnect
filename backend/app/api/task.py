@@ -99,5 +99,5 @@ def assign_task(
     task = get_task(task_id)
     if not task:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
-    # optional: verify payload.assigned_to is in this disaster’s volunteer list
-    return update_task(task_id, {"assigned_to": payload.assigned_to})
+    # pass the BaseModel directly, not a dict
+    return update_task(task_id, payload)
