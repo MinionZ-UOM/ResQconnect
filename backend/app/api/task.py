@@ -54,7 +54,6 @@ def read_task(
 @router.patch(
     "/{task_id}/status",
     response_model=Task,
-    dependencies=[require_perms("task:update_status")],
 )
 def update_task_status(
     task_id: str,
@@ -64,10 +63,6 @@ def update_task_status(
     task = crud.get_task(task_id)
     if not task:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
-
-    # owners can always update, others need task:read_all
-    if task.assigned_to != current.uid:
-        require_perms("task:read_all")(current)
 
     return crud.update_task_status(task_id, payload)
 
