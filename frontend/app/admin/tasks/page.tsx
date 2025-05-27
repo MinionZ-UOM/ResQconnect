@@ -204,7 +204,7 @@ export default function AdminTasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tasks</CardTitle>
+          <CardTitle>Tasks Suggested by AI agents</CardTitle>
           <CardDescription>{filtered.length} found</CardDescription>
         </CardHeader>
         <CardContent>

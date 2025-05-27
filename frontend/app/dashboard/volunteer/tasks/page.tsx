@@ -8,333 +8,152 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CheckCircle, Clock, MapPin, AlertTriangle, Navigation } from "lucide-react"
-import type { Task, RequestPriority, Disaster, GeoLocation } from "@/lib/types"
+import { AlertTriangle } from "lucide-react"
+import { callApi } from "@/lib/api"
+import type { Task, RequestPriority, GeoLocation, User } from "@/lib/types"
 
 export default function VolunteerTasksPage() {
   const searchParams = useSearchParams()
   const disasterId = searchParams.get("disasterId")
 
+  const [me, setMe] = useState<User | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
+  const [tasksError, setTasksError] = useState<string | null>(null)
+
   const [priorityFilter, setPriorityFilter] = useState<RequestPriority | "All">("All")
-  const [statusFilter, setStatusFilter] = useState<"All" | "Assigned" | "Arrived" | "InProgress" | "Completed">("All")
+  const [statusFilter, setStatusFilter] = useState<Task["status"] | "All">("All")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [userLocation, setUserLocation] = useState<GeoLocation | null>(null)
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
-  const [locationError, setLocationError] = useState("")
+  const [locationError, setLocationError] = useState<string>("")
+
+  // Fetch current user and their tasks
+  useEffect(() => {
+    async function load() {
+      setLoadingTasks(true)
+      try {
+        const user = await callApi<User>("users/me")
+        setMe(user)
+
+        const allTasks = await callApi<Task[]>("tasks")
+        const mine = allTasks.filter(t => t.assigned_to === user.display_name)
+        setTasks(mine)
+      } catch (err: any) {
+        setTasksError(err.message || "Failed to load tasks.")
+      } finally {
+        setLoadingTasks(false)
+      }
+    }
+    load()
+  }, [])
 
   // Get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       setIsLoadingLocation(true)
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          })
+        ({ coords }) => {
+          setUserLocation({ latitude: coords.latitude, longitude: coords.longitude })
           setIsLoadingLocation(false)
         },
-        (error) => {
-          console.error("Error getting location:", error)
+        () => {
           setLocationError("Unable to get your location. Some features may be limited.")
           setIsLoadingLocation(false)
-        },
+        }
       )
     } else {
-      setLocationError("Geolocation is not supported by your browser. Some features may be limited.")
+      setLocationError("Geolocation is not supported by your browser.")
     }
   }, [])
 
-  // Mock disasters - in a real app, this would come from an API
-  const mockDisasters: Disaster[] = [
-    {
-      id: "disaster-001",
-      name: "California Wildfire",
-      type: "Wildfire",
-      status: "Active",
-      description: "Rapidly spreading wildfire in Northern California affecting multiple counties.",
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento, CA" },
-      affectedArea: { radius: 50 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-      severity: 4,
-      impactedPopulation: 25000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    },
-    {
-      id: "disaster-002",
-      name: "Hurricane Maria",
-      type: "Hurricane",
-      status: "Active",
-      description: "Category 3 hurricane approaching the Gulf Coast with heavy rainfall and strong winds.",
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston, TX" },
-      affectedArea: { radius: 100 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1), // 1 day ago
-      severity: 5,
-      impactedPopulation: 50000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-  ]
+  // Filter and sort client-side
+  const filtered = tasks.filter(task => {
+    if (disasterId && task.disaster_id !== disasterId) return false
+    const matchPri = priorityFilter === "All" || task.priority === priorityFilter
+    const matchSta = statusFilter === "All" || task.status === statusFilter
+    return matchPri && matchSta
+  })
 
-  // Mock tasks - in a real app, these would come from an API
-  const mockTasks: Task[] = [
-    {
-      id: "task-001",
-      disasterId: "disaster-001",
-      title: "Distribute water supplies",
-      description: "Distribute bottled water to residents at community center",
-      status: "Assigned",
-      priority: "Medium",
-      assignedTo: "user-103", // Current volunteer user
-      progress: "Assigned",
-      steps: [
-        "Pick up supplies from distribution center",
-        "Arrive at community center",
-        "Set up distribution station",
-        "Distribute water to residents",
-        "Report quantities distributed",
-      ],
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Community Center, 123 Main St, Sacramento, CA" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "task-002",
-      disasterId: "disaster-001",
-      title: "Shelter assistance",
-      description: "Help set up and manage temporary shelter at Lincoln High School",
-      status: "InProgress",
-      priority: "High",
-      assignedTo: "user-103", // Current volunteer user
-      progress: "InProgress",
-      steps: [
-        "Arrive at Lincoln High School",
-        "Set up cots and bedding",
-        "Organize registration desk",
-        "Assist with meal distribution",
-        "Report shelter capacity",
-      ],
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Lincoln High School, Sacramento, CA" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 1),
-    },
-    {
-      id: "task-003",
-      disasterId: "disaster-002",
-      title: "Damage assessment",
-      description: "Conduct preliminary damage assessment in Westside neighborhood",
-      status: "Assigned",
-      priority: "Medium",
-      assignedTo: "user-103", // Current volunteer user
-      progress: "Assigned",
-      steps: [
-        "Arrive at designated area",
-        "Document damaged structures",
-        "Take photos of damage",
-        "Note any immediate hazards",
-        "Submit assessment report",
-      ],
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Westside Neighborhood, Houston, TX" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 30),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 15),
-    },
-    {
-      id: "task-004",
-      disasterId: "disaster-001",
-      title: "Pet rescue assistance",
-      description: "Assist animal control with rescuing pets left behind during evacuation",
-      status: "Completed",
-      priority: "Medium",
-      assignedTo: "user-103", // Current volunteer user
-      progress: "Completed",
-      steps: [
-        "Meet animal control team",
-        "Search designated area",
-        "Document rescued animals",
-        "Transport to animal shelter",
-        "Complete rescue report",
-      ],
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Oakridge Subdivision, Sacramento, CA" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 3),
-    },
-  ]
+  const priorityOrder = { 1: 0, 2: 1, 3: 2, 4: 3 }
+  const statusOrder = { pending: 0, on_route: 1, completed: 2, failed: 3 }
 
-  // Filter tasks based on disasterId if provided
-  const filteredTasks = disasterId ? mockTasks.filter((task) => task.disasterId === disasterId) : mockTasks
-
-  // Apply additional filters
-  const filteredAndSortedTasks = filteredTasks
-    .filter((task) => {
-      const matchesPriority = priorityFilter === "All" || task.priority === priorityFilter
-      const matchesStatus = statusFilter === "All" || task.progress === statusFilter
-      return matchesPriority && matchesStatus
-    })
-    .sort((a, b) => {
-      // Sort by priority (Critical > High > Medium > Low)
-      const priorityOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-      const priorityDiff =
-        priorityOrder[a.priority as keyof typeof priorityOrder] -
-        priorityOrder[b.priority as keyof typeof priorityOrder]
-
-      if (priorityDiff !== 0) return priorityDiff
-
-      // Then sort by status (Assigned > Arrived > InProgress > Completed)
-      const statusOrder = { Assigned: 0, Arrived: 1, InProgress: 2, Completed: 3 }
-      const aStatus = a.progress || "Assigned"
-      const bStatus = b.progress || "Assigned"
-      return statusOrder[aStatus as keyof typeof statusOrder] - statusOrder[bStatus as keyof typeof statusOrder]
-    })
+  const filteredAndSorted = [...filtered].sort((a, b) => {
+    const pA = priorityOrder[a.priority] ?? 99
+    const pB = priorityOrder[b.priority] ?? 99
+    if (pA !== pB) return pA - pB
+    const sA = statusOrder[a.status] ?? 99
+    const sB = statusOrder[b.status] ?? 99
+    return sA - sB
+  })
 
   const handleViewDetails = (task: Task) => {
     setSelectedTask(task)
     setIsDetailsOpen(true)
   }
 
-  const handleUpdateProgress = (task: Task, newProgress: "Arrived" | "InProgress" | "Completed") => {
-    // In a real app, this would be an API call to update the task
-    console.log(`Updating task ${task.id} progress to ${newProgress}`)
-
-    // If updating to "Arrived", we would send the current location
-    if (newProgress === "Arrived" && userLocation) {
-      console.log("Sending current location:", userLocation)
-    }
-
-    // Mock update
-    alert(`Task progress updated to: ${newProgress}`)
-  }
-
-  const getPriorityBadge = (priority: RequestPriority) => {
-    switch (priority) {
-      case "Critical":
-        return <Badge variant="destructive">Critical</Badge>
-      case "High":
-        return (
-          <Badge variant="default" className="bg-orange-500">
-            High
-          </Badge>
-        )
-      case "Medium":
-        return (
-          <Badge variant="default" className="bg-yellow-500">
-            Medium
-          </Badge>
-        )
-      case "Low":
-        return (
-          <Badge variant="default" className="bg-green-500">
-            Low
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">Unknown</Badge>
+  const handleUpdateStatus = async (task: Task, newStatus: Task["status"]) => {
+    try {
+      await callApi<Task>(`tasks/${task.id}/status`, "PATCH", { status: newStatus })
+      if (me) {
+        const all = await callApi<Task[]>("tasks")
+        setTasks(all.filter(t => t.assigned_to === me.display_name))
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update status")
     }
   }
 
-  const getProgressBadge = (progress?: string) => {
-    switch (progress) {
-      case "Assigned":
-        return (
-          <Badge variant="outline" className="border-blue-500 text-blue-500">
-            Assigned
-          </Badge>
-        )
-      case "Arrived":
-        return (
-          <Badge variant="outline" className="border-purple-500 text-purple-500">
-            Arrived
-          </Badge>
-        )
-      case "InProgress":
-        return (
-          <Badge variant="default" className="bg-yellow-500">
-            In Progress
-          </Badge>
-        )
-      case "Completed":
-        return (
-          <Badge variant="default" className="bg-green-500">
-            Completed
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">Unknown</Badge>
-    }
-  }
-
-  const getDisasterName = (disasterId: string) => {
-    const disaster = mockDisasters.find((d) => d.id === disasterId)
-    return disaster ? disaster.name : "Unknown Disaster"
-  }
+  if (loadingTasks) return <p>Loading your tasks…</p>
+  if (tasksError)   return <p className="text-red-500">{tasksError}</p>
 
   return (
     <div className="container mx-auto p-4 md:p-6">
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
-          {disasterId ? `Tasks for ${getDisasterName(disasterId)}` : "All Tasks"}
+        <h1 className="text-2xl md:text-3xl font-bold">
+          {disasterId ? `Tasks for Disaster ${disasterId}` : "My Tasks"}
         </h1>
-        <p className="text-slate-600 dark:text-slate-400">Manage and track your volunteer assignments</p>
+        <p>Manage and track your volunteer assignments</p>
       </header>
 
       {locationError && (
-        <Card className="mb-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-900">
+        <Card className="mb-6 border-yellow-200 bg-yellow-50">
           <CardContent className="p-4 flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />
-            <div>
-              <p className="text-yellow-700 dark:text-yellow-400">{locationError}</p>
-              <p className="text-sm text-yellow-600 dark:text-yellow-500 mt-1">
-                Location sharing helps us assign you to nearby tasks and track your arrival at task locations.
-              </p>
-            </div>
+            <AlertTriangle />
+            <p>{locationError}</p>
           </CardContent>
         </Card>
       )}
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Task Filters</CardTitle>
+          <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Priority</label>
-              <Select
-                value={priorityFilter}
-                onValueChange={(value) => setPriorityFilter(value as RequestPriority | "All")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by priority" />
-                </SelectTrigger>
+              <label>Priority</label>
+              <Select value={priorityFilter} onValueChange={v => setPriorityFilter(v as any)}>
+                <SelectTrigger><SelectValue placeholder="All"/></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Priorities</SelectItem>
-                  <SelectItem value="Critical">Critical</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="1">Critical</SelectItem>
+                  <SelectItem value="2">High</SelectItem>
+                  <SelectItem value="3">Medium</SelectItem>
+                  <SelectItem value="4">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Status</label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) =>
-                  setStatusFilter(value as "All" | "Assigned" | "Arrived" | "InProgress" | "Completed")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
+              <label>Status</label>
+              <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}>
+                <SelectTrigger><SelectValue placeholder="All"/></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Statuses</SelectItem>
-                  <SelectItem value="Assigned">Assigned</SelectItem>
-                  <SelectItem value="Arrived">Arrived</SelectItem>
-                  <SelectItem value="InProgress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="on_route">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -344,73 +163,48 @@ export default function VolunteerTasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Tasks</CardTitle>
-          <CardDescription>{filteredAndSortedTasks.length} tasks found</CardDescription>
+          <CardTitle>My Tasks</CardTitle>
+          <CardDescription>{filteredAndSorted.length} tasks found</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Task</TableHead>
+                  <TableHead>Instructions</TableHead>
                   <TableHead>Priority</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Disaster</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedTasks.length > 0 ? (
-                  filteredAndSortedTasks.map((task) => (
+                {filteredAndSorted.length > 0 ? (
+                  filteredAndSorted.map(task => (
                     <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.title}</TableCell>
+                      <TableCell>{task.instructions}</TableCell>
                       <TableCell>{getPriorityBadge(task.priority)}</TableCell>
-                      <TableCell>{getProgressBadge(task.progress)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate max-w-[200px]">{task.location.address}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getDisasterName(task.disasterId)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleViewDetails(task)}>
-                            View Details
-                          </Button>
-                          {task.progress !== "Completed" && (
-                            <Select
-                              onValueChange={(value) =>
-                                handleUpdateProgress(task, value as "Arrived" | "InProgress" | "Completed")
-                              }
-                            >
-                              <SelectTrigger className="h-9 w-[130px]">
-                                <SelectValue placeholder="Update Status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {task.progress !== "Arrived" &&
-                                  task.progress !== "InProgress" &&
-                                  task.progress !== "Completed" && (
-                                    <SelectItem value="Arrived">Mark as Arrived</SelectItem>
-                                  )}
-                                {(task.progress === "Arrived" || task.progress === "Assigned") && (
-                                  <SelectItem value="InProgress">Start Work</SelectItem>
-                                )}
-                                {task.progress !== "Completed" && (
-                                  <SelectItem value="Completed">Mark Complete</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
+                      <TableCell>{getProgressBadge(task.status)}</TableCell>
+                      <TableCell>{task.disaster_id}</TableCell>
+                      <TableCell className="text-right flex items-center gap-2 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => handleViewDetails(task)}>
+                          View
+                        </Button>
+                        <Select onValueChange={v => handleUpdateStatus(task, v as Task["status"])}>
+                          <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Update"/></SelectTrigger>
+                          <SelectContent>
+                            {task.status !== "pending"   && <SelectItem value="pending">Pending</SelectItem>}
+                            {task.status !== "on_route"  && <SelectItem value="on_route">In Progress</SelectItem>}
+                            {task.status !== "completed" && <SelectItem value="completed">Completed</SelectItem>}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-slate-500">
-                      No tasks found matching the current filters.
+                    <TableCell colSpan={5} className="text-center py-4">
+                      No tasks to display.
                     </TableCell>
                   </TableRow>
                 )}
@@ -424,103 +218,40 @@ export default function VolunteerTasksPage() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
-            <DialogDescription>Detailed information about the task</DialogDescription>
+            <DialogDescription>Full information</DialogDescription>
           </DialogHeader>
-
           {selectedTask && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">{selectedTask.title}</h2>
-                <div className="flex items-center gap-2">
-                  {getPriorityBadge(selectedTask.priority)}
-                  {getProgressBadge(selectedTask.progress)}
-                </div>
-              </div>
-
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md">
-                <p className="text-slate-600 dark:text-slate-400">{selectedTask.description}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Location</h3>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <MapPin className="h-4 w-4" />
-                    <span>{selectedTask.location.address}</span>
-                  </div>
-                  {userLocation && (
-                    <Button variant="outline" size="sm" className="mt-2">
-                      <Navigation className="mr-2 h-4 w-4" />
-                      Get Directions
-                    </Button>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2">Disaster</h3>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>{getDisasterName(selectedTask.disasterId)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2">Assigned</h3>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <Clock className="h-4 w-4" />
-                    <span>{new Date(selectedTask.createdAt).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2">Last Updated</h3>
-                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                    <Clock className="h-4 w-4" />
-                    <span>{new Date(selectedTask.updatedAt).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {selectedTask.steps && selectedTask.steps.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Task Steps</h3>
-                  <ol className="list-decimal pl-5 space-y-1">
-                    {selectedTask.steps.map((step, index) => (
-                      <li key={index} className="text-slate-600 dark:text-slate-400">
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4">
-                {selectedTask.progress !== "Completed" && (
-                  <>
-                    {selectedTask.progress !== "Arrived" && selectedTask.progress !== "InProgress" && (
-                      <Button
-                        onClick={() => handleUpdateProgress(selectedTask, "Arrived")}
-                        disabled={isLoadingLocation || !userLocation}
-                      >
-                        {isLoadingLocation ? "Getting Location..." : "Mark as Arrived"}
-                      </Button>
-                    )}
-                    {(selectedTask.progress === "Arrived" || selectedTask.progress === "Assigned") && (
-                      <Button onClick={() => handleUpdateProgress(selectedTask, "InProgress")}>Start Work</Button>
-                    )}
-                    {selectedTask.progress !== "Completed" && (
-                      <Button onClick={() => handleUpdateProgress(selectedTask, "Completed")}>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Mark Complete
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
+            <div>
+              <p>{selectedTask.instructions}</p>
+              <p>Priority: {selectedTask.priority}</p>
+              <p>Status: {selectedTask.status}</p>
+              <p>Disaster: {selectedTask.disaster_id}</p>
+              <p>Created: {new Date(selectedTask.created_at).toLocaleString()}</p>
+              <p>Updated: {new Date(selectedTask.updated_at).toLocaleString()}</p>
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
   )
+}
+
+// Helper badges moved below to keep component concise
+function getPriorityBadge(priority: number) {
+  switch (priority) {
+    case 1: return <Badge variant="destructive">Critical</Badge>
+    case 2: return <Badge variant="default" className="bg-orange-500">High</Badge>
+    case 3: return <Badge variant="default" className="bg-yellow-500">Medium</Badge>
+    case 4: return <Badge variant="default" className="bg-green-500">Low</Badge>
+    default: return <Badge variant="outline">Unknown</Badge>
+  }
+}
+
+function getProgressBadge(status: string) {
+  switch (status) {
+    case "pending":   return <Badge variant="outline" className="border-blue-500 text-blue-500">Pending</Badge>
+    case "on_route":  return <Badge variant="default" className="bg-yellow-500">In Progress</Badge>
+    case "completed": return <Badge variant="default" className="bg-green-500">Completed</Badge>
+    default:          return <Badge variant="outline">Unknown</Badge>
+  }
 }

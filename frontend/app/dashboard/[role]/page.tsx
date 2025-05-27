@@ -22,7 +22,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     .join(" ")
 
   return (
-    <div className="fixed top-0 bottom-0 left-64 right-0 overflow-auto p-4 md:p-6">
+    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
           Welcome, {roleTitle}
