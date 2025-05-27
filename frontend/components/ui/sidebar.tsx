@@ -141,12 +141,19 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper block md:flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
               className
             )}
             ref={ref}
             {...props}
           >
+            {/* mobile-only hamburger trigger */}
+            {isMobile && (
+              <SidebarTrigger
+                className="fixed top-4 inset-x-4 z-50 md:hidden"
+                aria-label="Open menu"
+              />
+            )}
             {children}
           </div>
         </TooltipProvider>
