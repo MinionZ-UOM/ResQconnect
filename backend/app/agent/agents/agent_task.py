@@ -79,7 +79,8 @@ class AgentTask(BaseAgent):
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 model=llm_cfg.get_model('groq', 'TASK_CREATION'),
-                response_model=Optional[List[Task]]
+                response_model=Optional[List[Task]],
+                trace_name='task_creation'
             )
 
             # persist into Firestore via CRUD layer**

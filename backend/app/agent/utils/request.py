@@ -27,7 +27,8 @@ def analyse_image(image_url) -> str:
         user_prompt=user_prompt,
         model=llm_cfg.get_model('groq', 'ANALYSE_IMAGE'),
         response_model=str,
-        image_url=image_url
+        image_url=image_url,
+        trace_name='analyse_image'
     )
 
     return summary
@@ -48,7 +49,8 @@ def parse_text(prompt) -> TextParserOutput:
         system_prompt=system_prompt,
         user_prompt=prompt,
         model=llm_cfg.get_model('groq', 'PARSE_TEXT'),
-        response_model=TextParserOutput
+        response_model=TextParserOutput,
+        trace_name='parse_text'
     )
 
     for key, value in parsed_request.dict().items():

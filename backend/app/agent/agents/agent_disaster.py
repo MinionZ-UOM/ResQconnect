@@ -42,7 +42,8 @@ class AgentDisaster(BaseAgent):
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             model=llm_cfg.get_model('groq', 'DISASTER_ASSIGNMENT'),
-            response_model=Optional[str]
+            response_model=Optional[str],
+            trace_name='disaster_assignment'
         )
 
         print(f"Disaster ID returned: {disaster_id}")
@@ -69,7 +70,8 @@ class AgentDisaster(BaseAgent):
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 model=llm_cfg.get_model('groq', 'DISASTER_CREATION'),
-                response_model=Disaster
+                response_model=Disaster,
+                trace_name='disaster_creation'
             )
 
             for key, value in disaster_parsed.dict().items():

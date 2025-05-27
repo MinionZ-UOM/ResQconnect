@@ -9,7 +9,7 @@ class GroqAgent:
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         self.client = instructor.patch(Groq(api_key=self.api_key))
 
-    @observe(as_type="generation")
+    @observe(as_type="generation", name='llm_groq_generation')
     def complete(
         self,
         system_prompt: str,
@@ -17,7 +17,8 @@ class GroqAgent:
         model: str,
         response_model: Type[Any],
         image_url: str = None,
-        max_retries: int = 2
+        max_retries: int = 2,
+        trace_name: str = 'generation'
     ) -> Any:
         if image_url:
             messages = [
@@ -51,6 +52,7 @@ class GroqAgent:
         langfuse_context.update_current_observation(
             input=messages,
             model=model,
+            name=f'llm_groq_{trace_name}'
             # model_parameters=model_parameters,
             # metadata=kwargs_clone,
         )
