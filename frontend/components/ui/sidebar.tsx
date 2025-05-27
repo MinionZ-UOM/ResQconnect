@@ -149,10 +149,9 @@ const SidebarProvider = React.forwardRef<
           >
             {/* mobile-only hamburger trigger */}
             {isMobile && (
-              <SidebarTrigger
-                className="fixed top-4 left-4 z-50 md:hidden"
-                aria-label="Open menu"
-              />
+               <div className="fixed top-4 left-4 z-50 md:hidden">
+                 <SidebarTrigger aria-label="Open menu" />
+              </div>
             )}
             {children}
           </div>
