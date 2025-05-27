@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { CheckCircle, Clock, MapPin, AlertTriangle } from "lucide-react"
+import { CheckCircle, Clock, AlertTriangle } from "lucide-react"
 
 export default function AdminTasksPage() {
   const searchParams = useSearchParams()
@@ -46,9 +46,10 @@ export default function AdminTasksPage() {
 
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  const [disasterFilter, setDisasterFilter] = useState<string | "All">(urlDisasterId)
   const [priorityFilter, setPriorityFilter] = useState<number | "All">("All")
   const [statusFilter, setStatusFilter] = useState<string | "All">("All")
-  const [disasterFilter, setDisasterFilter] = useState<string | "All">(urlDisasterId)
+  const [authFilter, setAuthFilter] = useState<"All" | "Authorized" | "Pending">("All")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -104,9 +105,16 @@ export default function AdminTasksPage() {
   }
 
   const filtered = tasks
+    .filter((t) => disasterFilter === "All" || t.disaster_id === disasterFilter)
     .filter((t) => priorityFilter === "All" || t.priority === priorityFilter)
     .filter((t) => statusFilter === "All" || t.status === statusFilter)
-    .filter((t) => disasterFilter === "All" || t.disaster_id === disasterFilter)
+    .filter((t) =>
+      authFilter === "All"
+        ? true
+        : authFilter === "Authorized"
+        ? t.is_authorized
+        : !t.is_authorized
+    )
     .sort((a, b) => a.priority - b.priority)
 
   const openDetails = (task: Task) => {
@@ -129,13 +137,10 @@ export default function AdminTasksPage() {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
               <label className="block mb-1 font-medium">Disaster</label>
-              <Select
-                value={disasterFilter}
-                onValueChange={(v) => setDisasterFilter(v)}
-              >
+              <Select value={disasterFilter} onValueChange={(v) => setDisasterFilter(v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -167,10 +172,7 @@ export default function AdminTasksPage() {
             </div>
             <div>
               <label className="block mb-1 font-medium">Status</label>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v)}
-              >
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -180,6 +182,19 @@ export default function AdminTasksPage() {
                   <SelectItem value="on_route">On Route</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Authorization</label>
+              <Select value={authFilter} onValueChange={(v) => setAuthFilter(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="Authorized">Authorized</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -201,6 +216,7 @@ export default function AdminTasksPage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Disaster</TableHead>
+                  <TableHead>Auth?</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -214,27 +230,23 @@ export default function AdminTasksPage() {
                       <TableCell>
                         {disasters.find((d) => d.id === t.disaster_id)?.name}
                       </TableCell>
+                      <TableCell>
+                        {t.is_authorized ? (
+                          <Badge variant="success">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline">No</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button size="sm" variant="outline" onClick={() => openDetails(t)}>
                           Details
                         </Button>
-                        <Select onValueChange={(v) => updateTaskStatus(t.id, v)}>
-                          <SelectTrigger className="h-8 w-32">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="on_route">On Route</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="failed">Failed</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">
+                    <TableCell colSpan={6} className="text-center py-4">
                       No tasks match filters
                     </TableCell>
                   </TableRow>
@@ -303,5 +315,5 @@ export default function AdminTasksPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+)
 }
