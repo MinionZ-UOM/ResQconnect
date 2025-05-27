@@ -108,7 +108,7 @@ export default function ResponderTasksPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="fixed top-0 bottom-0 left-64 right-0 overflow-auto px-4 md:px-6">
       <header className="mb-6">
         <h1 className="text-2xl font-bold">
           {disasterFilter === "All"
