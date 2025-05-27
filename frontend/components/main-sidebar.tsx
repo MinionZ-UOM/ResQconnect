@@ -129,7 +129,7 @@ export function MainSidebar({
       },
       {
         title: "New Request",
-        href: `/dashboard/affected/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/${roleSlug}/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: AlertTriangle,
       },
       {
