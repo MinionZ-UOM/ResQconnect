@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Extra
 from typing import List, Optional, Literal
 from datetime import datetime
 from enum import Enum
 
 
 class TaskBase(BaseModel):
-    source_request_id: str
+    source_request_id: Optional[str] = Field(
+        None,
+        description="(Optional) ID of the original request that spawned this task",
+    )
     priority: Literal[1, 2, 3] = Field(
         3,
         description="Task priority: 1=High, 2=Medium, 3=Low",
@@ -18,6 +21,15 @@ class TaskBase(BaseModel):
     resource_ids: List[str] = Field(
         default_factory=list,
         description="List of inventory resource IDs linked to this task",
+    )
+
+    disaster_id: str = Field(
+        ...,
+        description="Identifier of the disaster this task belongs to",
+    )
+    is_authorized: bool = Field(
+        False,
+        description="Whether the caller is authorized to view/modify this task",
     )
 
 
@@ -34,13 +46,15 @@ class TaskUpdate(BaseModel):
     role_required: Optional[str] = None
     resource_ids: Optional[List[str]] = None
     assigned_to: Optional[str] = None
+    disaster_id: Optional[str] = None
+    is_authorized: Optional[bool] = None
 
 
 class TaskStatusEnum(str, Enum):
-    pending = "pending"
-    on_route = "on_route"
+    pending   = "pending"
+    on_route  = "on_route"
     completed = "completed"
-    failed = "failed"
+    failed    = "failed"
 
 
 class TaskStatusUpdate(BaseModel):
@@ -73,6 +87,9 @@ class TaskInDBBase(TaskBase):
 
 class Task(TaskInDBBase):
     """
-    Complete Task schema for responses, including all database fields.
+    Complete Task schema for responses (including agent outputs),
+    but ignore any extra fields coming from the LLM.
     """
-    pass
+    class Config:
+        orm_mode = True
+        extra = Extra.ignore
