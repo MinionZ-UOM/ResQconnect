@@ -4,6 +4,7 @@ from app.agent.schemas.state import State
 from app.agent.rag.rag import build_vectorstores_from_pdfs, retrieve_from_collection, parse_documents_to_text
 from app.agent.schemas.types import Action
 from app.agent.utils.observation import load_observations_by_disaster_id
+from app.agent.utils.task import save_tasks
 from app.agent.schemas.task import Task
 from app.agent.config.llms_config_loader import LLMConfig
 from app.agent.utils.llm import GroqAgent
@@ -81,10 +82,17 @@ class AgentTask(BaseAgent):
                 response_model=Optional[List[Task]]
             )
 
-            state.tasks = tasks
+            # persist into Firestore via CRUD layer**
+            saved = save_tasks(tasks, state.request)
+
+            state.tasks = saved
             state.previous_action = Action.task_creation
             state.next_action = None
 
+            print("Tasks saved to DB:", state.tasks)
+
+            print("Tasks created successfully:", state.tasks)
+            print("State request task creation:", state.request)
         except Exception as e:
             print(f"Error during task creation: {e}")
             # Optionally, you could return the state with an error message or empty tasks
