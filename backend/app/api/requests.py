@@ -50,7 +50,7 @@ async def create_request(
             "extracted_request_image": None,
             "coordinates": {
                 "lat": request.location.lat,
-                "lng": request.location.lng
+                "lng": request.location.lng,
             },
             "location_from_coordinates": None,
             "location_from_input": None,
