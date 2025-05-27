@@ -22,8 +22,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     .join(" ")
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6">
+    <div className="container mx-auto p-4 md:p-6">
+      <header className="mb-6 ml-8 md:ml-0">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
           Welcome, {roleTitle}
         </h1>
@@ -31,7 +31,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">Active Disasters</CardTitle>

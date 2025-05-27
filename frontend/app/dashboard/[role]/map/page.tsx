@@ -145,7 +145,7 @@ export default function MapPage({ params }: MapPageProps) {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <header className="mb-6">
+      <header className="mb-6 ml-8 md:ml-0">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Map View</h1>
         <p className="text-slate-600 dark:text-slate-400">Geographic overview of requests and resources</p>
       </header>

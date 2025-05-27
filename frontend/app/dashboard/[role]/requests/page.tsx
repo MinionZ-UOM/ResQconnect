@@ -210,12 +210,12 @@ export default function AdminRequestsPage() {
     }[s] || <Badge>{s}</Badge>)
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+    <div className="container mx-auto p-4 md:p-6">
       {/* Header */}
-      <header className="mb-6 flex flex-col md:flex-row md:justify-between items-start gap-4">
+      <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold">All Requests</h1>
-          <p className="text-slate-600">Manage and monitor all assistance requests</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">All Requests</h1>
+          <p className="text-slate-600 dark:text-slate-400">Manage and monitor all assistance requests</p>
         </div>
       </header>
 

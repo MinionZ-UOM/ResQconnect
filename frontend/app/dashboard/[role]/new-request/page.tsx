@@ -179,7 +179,7 @@ export default function NewRequestPage() {
   };
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+    <div className="container mx-auto p-4 md:p-6">
       <h1 className="text-2xl md:text-3xl font-semibold mb-6">New Request</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* — Disaster selector */}

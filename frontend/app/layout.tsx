@@ -2,7 +2,7 @@
 
 import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
-import { SidebarProvider, Sidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { AuthProvider, useAuth } from "@/hooks/AuthProvider";
 import { usePathname } from "next/navigation";
 import "./globals.css";
@@ -52,7 +52,11 @@ function WithOptionalSidebar({ children }: { children: React.ReactNode }) {
   // Otherwise user is logged in and not on a public page—show the sidebar
   return (
     <SidebarProvider>
-      <Sidebar>{children}</Sidebar>
+      <Sidebar></Sidebar>
+
+      <SidebarInset>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }

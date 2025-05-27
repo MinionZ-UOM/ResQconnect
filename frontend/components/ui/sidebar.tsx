@@ -161,7 +161,7 @@ const SidebarProvider = React.forwardRef<
 
               if (!isMobile || loading || isPublicRoute) return null
               return (
-                <div className="fixed top-4 left-4 z-50 md:hidden">
+                <div className="fixed mt-5 left-4 z-50 md:hidden">
                   <SidebarTrigger aria-label="Open menu" />
                 </div>
               )
@@ -213,7 +213,9 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+          
+
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
