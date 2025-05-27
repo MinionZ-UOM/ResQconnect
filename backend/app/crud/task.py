@@ -43,12 +43,25 @@ def get_task(task_id: str) -> Optional[Task]:
 
 def list_tasks() -> List[Task]:
     """
-    List all Tasks in the collection.
+    List all Tasks in the collection, normalizing Firestore keys
+    into the Pydantic schema.
     """
-    return [
-        Task(id=s.id, **s.to_dict())
-        for s in get_db().collection(COLLECTION).stream()
-    ]
+    docs = get_db().collection(COLLECTION).stream()
+    tasks: list[Task] = []
+
+    for doc in docs:
+        data = doc.to_dict()
+
+        if "disasterId" in data:
+            data["disaster_id"] = data.pop("disasterId")
+        if "assignedTo" in data:
+            data["assigned_to"] = data.pop("assignedTo")
+        if "etaMinutes" in data:
+            data["eta_minutes"] = data.pop("etaMinutes")
+
+        tasks.append(Task(**{"id": doc.id, **data}))
+
+    return tasks
 
 
 def list_tasks_by_assignee(uid: str) -> List[Task]:
@@ -78,5 +91,18 @@ def update_task_status(task_id: str, obj_in: TaskStatusUpdate) -> Optional[Task]
     """
     updates = obj_in.dict(exclude_unset=True)
     updates["updated_at"] = datetime.now(timezone.utc)
+    _ref(task_id).update(updates)
+    return get_task(task_id)
+
+
+def authorize_task(task_id: str) -> Optional[Task]:
+    """
+    Mark a Task as authorized (set is_authorized=True) and update the timestamp.
+    """
+    now = datetime.now(timezone.utc)
+    updates = {
+        "is_authorized": True,
+        "updated_at": now,
+    }
     _ref(task_id).update(updates)
     return get_task(task_id)

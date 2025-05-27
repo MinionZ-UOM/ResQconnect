@@ -73,7 +73,7 @@ export function MainSidebar({
     Responder: [
       {
         title: "Tasks",
-        href: `/dashboard/responder/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/${roleSlug}/tasks${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: CheckSquare,
       },
       {
@@ -129,7 +129,7 @@ export function MainSidebar({
       },
       {
         title: "New Request",
-        href: `/dashboard/affected/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
+        href: `/dashboard/${roleSlug}/new-request${disasterId ? `?disasterId=${disasterId}` : ""}`,
         icon: AlertTriangle,
       },
       {

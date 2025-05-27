@@ -7,7 +7,8 @@ from app.api.deps import get_current_user
 from app.core.permissions import require_perms as check_permission
 from app.crud import disaster as crud
 from app.schemas.disaster import JoinedResponse
-
+from app.crud.disaster import get_all_volunteers_by_disaster,get_all_volunteer_ids_by_disaster
+from app.schemas.user import User
 
 router = APIRouter(prefix="/disasters", tags=["Disasters"])
 
@@ -117,3 +118,17 @@ def check_joined(
             detail="Disaster not found"
         )
     return JoinedResponse(joined=joined)
+
+
+@router.get(
+    "/{disaster_id}/volunteers",
+    response_model=List[str],              # now correctly a list of display_name strings
+    dependencies=[check_permission("task:assign")],
+)
+def list_volunteers(disaster_id: str):
+    vols = get_all_volunteers_by_disaster(disaster_id)
+    if vols is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
+    # Return only display names (all non-null)
+    print(vols)
+    return [v["display_name"] for v in vols]

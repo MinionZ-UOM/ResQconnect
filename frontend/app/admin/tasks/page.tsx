@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { callApi } from "@/lib/api"
-import type { Task, RequestPriority, Disaster } from "@/lib/types"
+import type { Task, Disaster } from "@/lib/types"
 import {
   Card,
   CardContent,
@@ -35,17 +35,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { CheckCircle, Clock, MapPin, AlertTriangle } from "lucide-react"
+import { CheckCircle, Clock, AlertTriangle } from "lucide-react"
 
-export default function ResponderTasksPage() {
+export default function AdminTasksPage() {
   const searchParams = useSearchParams()
   const urlDisasterId = searchParams.get("disasterId") || "All"
 
+  // Admin page: user is admin
+  const isAdmin = true
+
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [priorityFilter, setPriorityFilter] = useState<RequestPriority | "All">("All")
-  const [statusFilter, setStatusFilter] = useState<"All" | "pending" | "on_route" | "completed" | "failed">("All")
   const [disasterFilter, setDisasterFilter] = useState<string | "All">(urlDisasterId)
+  const [priorityFilter, setPriorityFilter] = useState<number | "All">("All")
+  const [statusFilter, setStatusFilter] = useState<string | "All">("All")
+  const [authFilter, setAuthFilter] = useState<"All" | "Authorized" | "Pending">("All")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -54,12 +58,10 @@ export default function ResponderTasksPage() {
       try {
         const ds = await callApi<Disaster[]>("disasters", "GET")
         setDisasters([{ id: "All", name: "All Disasters" }, ...ds])
-
-        // fetch only your tasks; then we'll keep only authorized
         const ts = await callApi<Task[]>("tasks", "GET")
-        setTasks(ts.filter((t) => t.is_authorized))
+        setTasks(ts)
       } catch (err) {
-        console.error("Failed to load:", err)
+        console.error(err)
       }
     }
     loadData()
@@ -69,41 +71,54 @@ export default function ResponderTasksPage() {
     try {
       const payload = { status: newStatus }
       const updated = await callApi<Task>(`tasks/${taskId}/status`, "PATCH", payload)
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? updated : t))
-      )
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)))
     } catch (err) {
       console.error(err)
       alert("Failed to update status")
     }
   }
 
-  const renderPriorityBadge = (p: RequestPriority) => {
-    switch (p) {
-      case 1: return <Badge variant="destructive">High</Badge>
-      case 2: return <Badge variant="default">Medium</Badge>
-      case 3: return <Badge variant="default">Low</Badge>
-      default: return <Badge variant="outline">Unknown</Badge>
+  const authorizeTask = async (taskId: string) => {
+    try {
+      const updated = await callApi<Task>(`tasks/${taskId}/authorize`, "PATCH")
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)))
+      alert("Task authorized")
+    } catch (err) {
+      console.error(err)
+      alert("Authorization failed")
     }
   }
-  const renderStatusBadge = (s: string) => {
-    switch (s) {
-      case "pending":  return <Badge variant="outline">Pending</Badge>
-      case "on_route": return <Badge variant="default">On Route</Badge>
-      case "completed":return <Badge variant="default">Completed</Badge>
-      case "failed":   return <Badge variant="destructive">Failed</Badge>
-      default:         return <Badge variant="outline">Unknown</Badge>
+
+  const renderBadge = (value: any, type: "priority" | "status") => {
+    if (type === "priority") {
+      const labels = { 1: "High", 2: "Medium", 3: "Low" }
+      const variants = { 1: "destructive", 2: "default", 3: "default" } as const
+      return <Badge variant={variants[value]}>{labels[value]}</Badge>
     }
+    const variants = {
+      pending: "outline",
+      on_route: "default",
+      completed: "default",
+      failed: "destructive",
+    } as const
+    return <Badge variant={variants[value]}>{value.replace("_", " ")}</Badge>
   }
 
   const filtered = tasks
     .filter((t) => disasterFilter === "All" || t.disaster_id === disasterFilter)
     .filter((t) => priorityFilter === "All" || t.priority === priorityFilter)
     .filter((t) => statusFilter === "All" || t.status === statusFilter)
+    .filter((t) =>
+      authFilter === "All"
+        ? true
+        : authFilter === "Authorized"
+        ? t.is_authorized
+        : !t.is_authorized
+    )
     .sort((a, b) => a.priority - b.priority)
 
-  const openDetails = (t: Task) => {
-    setSelectedTask(t)
+  const openDetails = (task: Task) => {
+    setSelectedTask(task)
     setIsDetailsOpen(true)
   }
 
@@ -112,7 +127,7 @@ export default function ResponderTasksPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold">
           {disasterFilter === "All"
-            ? "Authorized Tasks"
+            ? "All Tasks"
             : `Tasks for ${disasters.find((d) => d.id === disasterFilter)?.name}`}
         </h1>
       </header>
@@ -122,13 +137,10 @@ export default function ResponderTasksPage() {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block mb-1 font-medium">Disaster</label>
-              <Select
-                value={disasterFilter}
-                onValueChange={(v) => setDisasterFilter(v)}
-              >
+              <Select value={disasterFilter} onValueChange={(v) => setDisasterFilter(v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -152,18 +164,15 @@ export default function ResponderTasksPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All</SelectItem>
-                  <SelectItem value={1}>High</SelectItem>
-                  <SelectItem value={2}>Medium</SelectItem>
-                  <SelectItem value={3}>Low</SelectItem>
+                  <SelectItem value="1">High</SelectItem>
+                  <SelectItem value="2">Medium</SelectItem>
+                  <SelectItem value="3">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <label className="block mb-1 font-medium">Status</label>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as any)}
-              >
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -173,6 +182,19 @@ export default function ResponderTasksPage() {
                   <SelectItem value="on_route">On Route</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Authorization</label>
+              <Select value={authFilter} onValueChange={(v) => setAuthFilter(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="Authorized">Authorized</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -190,10 +212,11 @@ export default function ResponderTasksPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
+                  <TableHead>Instructions</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>Disaster</TableHead>
+                  <TableHead>Auth?</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -201,44 +224,29 @@ export default function ResponderTasksPage() {
                 {filtered.length > 0 ? (
                   filtered.map((t) => (
                     <TableRow key={t.id}>
-                      <TableCell>{t.instructions || t.id}</TableCell>
-                      <TableCell>{renderPriorityBadge(t.priority)}</TableCell>
-                      <TableCell>{renderStatusBadge(t.status)}</TableCell>
+                      <TableCell>{t.instructions}</TableCell>
+                      <TableCell>{renderBadge(t.priority, "priority")}</TableCell>
+                      <TableCell>{renderBadge(t.status, "status")}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{t.location?.address}</span>
-                        </div>
+                        {disasters.find((d) => d.id === t.disaster_id)?.name}
+                      </TableCell>
+                      <TableCell>
+                        {t.is_authorized ? (
+                          <Badge variant="success">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline">No</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openDetails(t)}
-                        >
-                          View
+                        <Button size="sm" variant="outline" onClick={() => openDetails(t)}>
+                          Details
                         </Button>
-                        {t.status !== "completed" && (
-                          <Select
-                            onValueChange={(v) => updateTaskStatus(t.id, v)}
-                          >
-                            <SelectTrigger className="h-8 w-32">
-                              <SelectValue placeholder="Update" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="on_route">On Route</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="failed">Failed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-4">
+                    <TableCell colSpan={6} className="text-center py-4">
                       No tasks match filters
                     </TableCell>
                   </TableRow>
@@ -253,31 +261,29 @@ export default function ResponderTasksPage() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
-            <DialogDescription>Details about this task</DialogDescription>
+            <DialogDescription>Admin view of task</DialogDescription>
           </DialogHeader>
 
           {selectedTask && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">
-                  {selectedTask.instructions || selectedTask.id}
-                </h2>
+                <h2 className="text-xl font-bold">{selectedTask.instructions}</h2>
                 <div className="flex gap-2">
-                  {renderPriorityBadge(selectedTask.priority)}
-                  {renderStatusBadge(selectedTask.status)}
+                  {renderBadge(selectedTask.priority, "priority")}
+                  {renderBadge(selectedTask.status, "status")}
                 </div>
               </div>
 
-              {selectedTask.description && (
-                <p className="text-slate-600">{selectedTask.description}</p>
-              )}
+              {selectedTask.description && <p>{selectedTask.description}</p>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="font-medium">Location</h3>
+                  <h3 className="font-medium">Disaster</h3>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{selectedTask.location?.address}</span>
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>
+                      {disasters.find((d) => d.id === selectedTask.disaster_id)?.name}
+                    </span>
                   </div>
                 </div>
                 <div>
@@ -296,29 +302,18 @@ export default function ResponderTasksPage() {
                 </div>
               </div>
 
-              {selectedTask.eta_minutes != null && (
-                <div>
-                  <h3 className="font-medium">ETA (min)</h3>
-                  <p>{selectedTask.eta_minutes}</p>
+              {isAdmin && !selectedTask.is_authorized && (
+                <div className="flex justify-end">
+                  <Button variant="destructive" onClick={() => authorizeTask(selectedTask.id)}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Authorize Task
+                  </Button>
                 </div>
               )}
-
-              <div className="flex justify-end gap-2 pt-4">
-                {selectedTask.status !== "completed" && (
-                  <Button
-                    onClick={() =>
-                      updateTaskStatus(selectedTask.id, "completed")
-                    }
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Mark Complete
-                  </Button>
-                )}
-              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
-  )
+)
 }

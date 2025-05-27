@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.schemas.task import TaskCreate, Task, TaskStatusUpdate
+from app.schemas.task import TaskCreate, Task, TaskStatusUpdate, TaskAssignPayload
 from app.schemas.user import User
 from app.core.permissions import require_perms
 from app.crud import task as crud
 from app.api.deps import get_current_user
+from app.crud.task import get_task, update_task
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
-
 
 # --- create ---
 @router.post(
@@ -19,7 +19,8 @@ def create_task(payload: TaskCreate):
 
 
 # --- list ---
-@router.get("/", response_model=list[Task], dependencies=[require_perms("task:read_all")])
+@router.get("", response_model=list[Task], dependencies=[require_perms("task:read_all")])
+@router.get("/", include_in_schema=False)  
 def list_tasks():
     return crud.list_tasks()
 
@@ -69,3 +70,34 @@ def update_task_status(
         require_perms("task:read_all")(current)
 
     return crud.update_task_status(task_id, payload)
+
+
+@router.patch(
+    "/{task_id}/authorize",
+    response_model=Task,
+    dependencies=[require_perms("task:authorize")],
+)
+def authorize_task_endpoint(
+    task_id: str,
+):
+    task = crud.get_task(task_id)
+    if not task:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+    return crud.authorize_task(task_id)
+
+
+@router.patch(
+    "/{task_id}/assign",
+    response_model=Task,
+    dependencies=[require_perms("task:assign")],
+)
+def assign_task(
+    task_id: str,
+    payload: TaskAssignPayload,
+    current: User = Depends(get_current_user),
+):
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+    # pass the BaseModel directly, not a dict
+    return update_task(task_id, payload)

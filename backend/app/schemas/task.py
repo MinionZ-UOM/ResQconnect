@@ -93,3 +93,6 @@ class Task(TaskInDBBase):
     class Config:
         orm_mode = True
         extra = Extra.ignore
+
+class TaskAssignPayload(BaseModel):
+    assigned_to: str
