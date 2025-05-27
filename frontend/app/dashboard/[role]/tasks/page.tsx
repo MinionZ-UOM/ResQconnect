@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/dialog"
 import { CheckCircle, Clock, MapPin, AlertTriangle } from "lucide-react"
 
+const PRIORITY_LABELS = ["Critical", "High", "Medium", "Low"] as const
+
 export default function ResponderTasksPage() {
   const searchParams = useSearchParams()
   const urlDisasterId = searchParams.get("disasterId") || "All"
@@ -95,8 +97,10 @@ export default function ResponderTasksPage() {
     setAssigningTask(null)
   }
 
-  const getPriorityBadge = (p: RequestPriority) => {
-    switch (p) {
+  const getPriorityBadge = (p: RequestPriority | number) => {
+    const label = typeof p === "number" ? PRIORITY_LABELS[p] : p
+
+    switch (label) {
       case "Critical":
         return <Badge variant="destructive">Critical</Badge>
       case "High":
@@ -135,9 +139,13 @@ export default function ResponderTasksPage() {
     .filter((t) => priorityFilter === "All" || t.priority === priorityFilter)
     .filter((t) => statusFilter === "All" || t.status === statusFilter)
     .sort((a, b) => {
-      const po = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-      const so = { pending: 0, on_route: 1, completed: 2, failed: 3 }
-      const pd = po[a.priority as keyof typeof po] - po[b.priority as keyof typeof po]
+      const po = { Critical: 0, High: 1, Medium: 2, Low: 3 } as const
+      const so = { pending: 0, on_route: 1, completed: 2, failed: 3 } as const
+
+      const pa = typeof a.priority === "number" ? PRIORITY_LABELS[a.priority] : a.priority
+      const pb = typeof b.priority === "number" ? PRIORITY_LABELS[b.priority] : b.priority
+
+      const pd = po[pa] - po[pb]
       if (pd !== 0) return pd
       return so[a.status as keyof typeof so] - so[b.status as keyof typeof so]
     })
@@ -147,7 +155,7 @@ export default function ResponderTasksPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold">
           {disasterFilter === "All"
-            ? "My Tasks"
+            ? "Authorized Tasks by Admin"
             : `Tasks for ${getDisasterName(disasterFilter)}`}
         </h1>
       </header>
@@ -231,14 +239,9 @@ export default function ResponderTasksPage() {
                       <Button size="sm" variant="outline" onClick={() => openDetails(t)}>
                         View
                       </Button>
-                      {/* {!t.assigned_to && (
-                        <Button size="sm" onClick={() => openAssign(t)}>
-                          Assign
-                        </Button> */}
-                    <Button size="sm" onClick={() => openAssign(t)}>
+                      <Button size="sm" onClick={() => openAssign(t)}>
                         Assign
-                    </Button>
-                      {/* )} */}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
