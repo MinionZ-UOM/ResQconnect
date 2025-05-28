@@ -195,9 +195,7 @@ export default function DisasterPage() {
 
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6 ml-8 md:ml-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Disasters</h1>
-      </header>
+      <h1 className="text-2xl font-semibold mb-6">Disasters</h1>
 
       {loading ? (
         <p>Loading…</p>
