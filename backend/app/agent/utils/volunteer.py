@@ -60,27 +60,25 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> List[AgentVolunteer]:
 
     agents: List[AgentVolunteer] = []
     for rec in backend:
-        # rec is a dict with at least: uid, location_lat, location_lng
         uid = rec.get("uid")
         if uid is None:
-            # Skip any record without a UID
             continue
 
-        # Normalize and guard against missing coordinate fields
         lat = rec.get("location_lat")
         lng = rec.get("location_lng")
         if lat is None or lng is None:
-            # Skip or handle missing coordinates as needed
             continue
 
         # look up availability flag
         available = get_user_availability(uid)
+        # map available → "active", else → "inactive"
+        status_str = "active" if available else "inactive"
 
         agents.append(
             AgentVolunteer(
                 id=uid,
                 location=Coordinates(lat=lat, lng=lng),
-                status=StatusType.AVAILABLE if available else StatusType.NOT_AVAILABLE,
+                status=status_str,
             )
         )
 
