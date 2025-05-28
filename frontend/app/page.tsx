@@ -8,7 +8,7 @@ import { DisasterList } from "@/components/disasters/disaster-list"
 export default function Home() {
   return (
     <div
-      className="relative min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800"
+      className="relative min-h-screen w-full overflow-x-hidden bg-gradient-to-b from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800"
     >
 
       {/* Main content */}
@@ -63,7 +63,7 @@ export default function Home() {
           </div>
         </section>
 
-
+        {/*
           <section className="mb-16">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 text-slate-800 dark:text-slate-200">
               Active Disasters
@@ -98,6 +98,7 @@ export default function Home() {
               </div>
             </div>
           </section>
+        */}
         </main>
       </div>
     </div>

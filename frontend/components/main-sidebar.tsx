@@ -67,8 +67,7 @@ export function MainSidebar({
           ? "/admin/dashboard"
           : `/dashboard/${roleSlug}`,
     },
-  ];
-
+  ];  
   const roleRoutes = {
     Responder: [
       {

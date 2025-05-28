@@ -179,8 +179,14 @@ export default function NewRequestPage() {
   };
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <h1 className="text-2xl md:text-3xl font-semibold mb-6">New Request</h1>
+     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">  
+
+      <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:justify-between items-start gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">New Request</h1>            
+          </div>
+        </header>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* — Disaster selector */}
         <div>
