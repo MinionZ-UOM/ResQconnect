@@ -157,7 +157,8 @@ const SidebarProvider = React.forwardRef<
               const isPublicRoute =
                 !user ||
                 pathname === "/" ||
-                pathname.startsWith("/auth/login")
+                pathname.startsWith("/auth/login") ||
+                pathname.startsWith("/auth/signup")
 
               if (!isMobile || loading || isPublicRoute) return null
               return (

@@ -43,7 +43,7 @@ function WithOptionalSidebar({ children }: { children: React.ReactNode }) {
   if (loading) return null;
 
   // If no user, or we're on the public routes ("/" or "/auth/login or "/auth/signup"), don't show sidebar
-  const isPublicRoute = !user || pathname === "/" || pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signin");
+  const isPublicRoute = !user || pathname === "/" || pathname.startsWith("/auth/login") || pathname.startsWith("/auth/signup");
   
     if (isPublicRoute) {
     return <>{children}</>;
