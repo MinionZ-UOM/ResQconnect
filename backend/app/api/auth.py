@@ -52,7 +52,12 @@ async def set_my_availability(
             detail="Only volunteers may update availability"
         )
 
-    update_user_availability(current_user.uid, body.availability)
+    # forward the optional location
+    update_user_availability(
+        current_user.uid,
+        body.availability,
+        body.location
+    )
 
     updated = get_user(current_user.uid)
     if not updated:

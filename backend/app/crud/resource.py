@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from google.cloud.firestore import DocumentReference
 from app.core.firebase import get_db
 from app.schemas.resource import ResourceCreate, ResourceUpdate, Resource
@@ -171,3 +171,68 @@ def get_resources_by_ids_and_type(donor_ids: List[str], resource_type: str) -> L
             print(f"[WARN] Skipping resource {doc_snap.id} (could not load)")
     print(f"[INFO] resources fetched" , resources)
     return resources
+
+
+def save_request_resources(request_id: str, entries: List[Dict]) -> None:
+    """
+    Persist resource_requirements + manpower_requirement per task
+    under the 'request_resources' collection keyed by request_id.
+    """
+    db = get_db()
+    db.collection("request_resources") \
+      .document(request_id) \
+      .set({
+          "tasks": entries,
+          "created_at": datetime.now(timezone.utc),
+      })
+
+
+def get_request_resources(request_id: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Load resource_requirements + manpower_requirement per task.
+    Supports two document shapes:
+      1. Nested under "tasks"
+      2. Flat (single-task) schema
+    """
+    print(f"[DEBUG] → Fetching request_resources/{request_id}")
+    db = get_db()
+    doc_ref = db.collection("request_resources").document(request_id)
+    snap = doc_ref.get()
+
+    if not snap.exists:
+        print(f"[DEBUG] ← No document found for request_id={request_id}")
+        return {}
+
+    data = snap.to_dict() or {}
+    print(f"[DEBUG] ← Document data: {data!r}")
+
+    entries = data.get("tasks")
+    if entries is None:
+        print("[DEBUG] • 'tasks' field missing – using flat schema fallback")
+        entries = [{
+            "task_id": request_id,
+            "resource_requirements": data.get("resource_requirements", []),
+            "manpower_requirement": data.get("manpower_requirement"),
+        }]
+    else:
+        print(f"[DEBUG] • Found tasks array with {len(entries)} entries")
+
+    result: Dict[str, Dict[str, Any]] = {}
+    for i, entry in enumerate(entries, start=1):
+        tid = entry.get("task_id")
+        print(f"[DEBUG]   Entry #{i}: task_id={tid!r}")
+        if not tid:
+            print(f"[DEBUG]     ↳ skipping – no task_id")
+            continue
+
+        reqs = entry.get("resource_requirements", [])
+        mprep = entry.get("manpower_requirement")
+        print(f"[DEBUG]     ↳ requirements={reqs!r}, manpower={mprep!r}")
+
+        result[tid] = {
+            "resource_requirements": reqs,
+            "manpower_requirement": mprep,
+        }
+
+    print(f"[DEBUG] ← Returning result with {len(result)} task(s): {list(result.keys())}")
+    return result

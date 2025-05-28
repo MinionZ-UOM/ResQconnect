@@ -8,6 +8,8 @@ from app.agent.utils.task import save_tasks
 from app.agent.schemas.task import Task
 from app.agent.config.llms_config_loader import LLMConfig
 from app.agent.utils.llm import GroqAgent
+from app.agent.utils.task_resources import save_request_resources
+
 
 class AgentTask(BaseAgent):
     def handle(self, state: State) -> State:
@@ -85,8 +87,22 @@ class AgentTask(BaseAgent):
 
             # persist into Firestore via CRUD layer**
             saved = save_tasks(tasks, state.request)
+            # Extract and save resource & manpower info
+            entries = []
+            for created, at in zip(saved, tasks):
+                entries.append({
+                    "task_id": created.id,
+                    "resource_requirements": [
+                        {"resource_type": rt, "quantity": qty}
+                        for rt, qty in getattr(at, "resource_requirements", [])
+                    ],
+                    "manpower_requirement": getattr(at, "manpower_requirement", None),
+                })
 
-            state.tasks = saved
+            req_id = getattr(state.request, "source_request_id", None) or state.request.disaster_id
+            save_request_resources(req_id, entries)
+
+            state.tasks = tasks
             state.previous_action = Action.task_creation
             state.next_action = None
 

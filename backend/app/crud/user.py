@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import HTTPException, status
 from app.core.firebase import users_ref
-from app.schemas.user import User
+from app.schemas.user import User, Coordinates
 from google.cloud import firestore 
 
 def get_user(uid: str) -> Optional[User]:
@@ -31,8 +31,21 @@ def create_user(
         merge=True,
     )
 
+def update_user_location(uid: str, coords: Coordinates) -> None:
+    user_doc = users_ref().document(uid).get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-def update_user_availability(uid: str, availability: bool) -> None:
+    # Update the nested location field
+    users_ref().document(uid).update({
+        "location": {
+            "lat": coords.latitude,
+            "lng": coords.longitude
+        }
+    })
+
+
+def update_user_availability(uid: str, availability: bool, coords: Optional[Coordinates] = None) -> None:
     # fetch current user
     user_doc = users_ref().document(uid).get()
     if not user_doc.exists:
@@ -47,6 +60,10 @@ def update_user_availability(uid: str, availability: bool) -> None:
 
     # perform the update
     users_ref().document(uid).update({"availability": availability})
+
+    # if coordinates were provided, update location too
+    if coords:
+        update_user_location(uid, coords)
 
 
 def get_user_availability(uid: str) -> bool:
