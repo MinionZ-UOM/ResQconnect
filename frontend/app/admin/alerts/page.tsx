@@ -70,11 +70,11 @@ export default function AdminDashboardPage() {
   const currentDisaster = mockDisasters.find((d) => d.id === selectedDisaster)
 
   return (
-    <>
-      <header className="mb-6">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+      <header className="mb-6 ml-8 md:ml-0">
         <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200 md:text-3xl">Admin Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Admin Dashboard</h1>
             <p className="text-slate-600 dark:text-slate-400">
               {selectedDisaster === "all"
                 ? "Overview of all disaster response activities"
@@ -200,6 +200,6 @@ export default function AdminDashboardPage() {
           <RecentActivity disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
         </CardContent>
       </Card>
-    </>
+    </div>
   )
 }

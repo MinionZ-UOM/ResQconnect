@@ -18,6 +18,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePathname } from "next/navigation"
+import { useAuth }     from "@/hooks/AuthProvider"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -141,12 +143,30 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
+              "group/sidebar-wrapper block md:flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar",
               className
             )}
             ref={ref}
             {...props}
           >
+            {/* mobile-only hamburger trigger */}
+            {(() => {
+              // don’t show on public routes or if not logged in
+              const pathname = usePathname()
+              const { user, loading } = useAuth()
+              const isPublicRoute =
+                !user ||
+                pathname === "/" ||
+                pathname.startsWith("/auth/login") ||
+                pathname.startsWith("/auth/signup")
+
+              if (!isMobile || loading || isPublicRoute) return null
+              return (
+                <div className="fixed mt-5 left-4 z-50 md:hidden">
+                  <SidebarTrigger aria-label="Open menu" />
+                </div>
+              )
+            })()}            
             {children}
           </div>
         </TooltipProvider>
@@ -194,7 +214,9 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+        <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+          
+
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"

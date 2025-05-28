@@ -106,3 +106,21 @@ def authorize_task(task_id: str) -> Optional[Task]:
     }
     _ref(task_id).update(updates)
     return get_task(task_id)
+
+
+def get_tasks_by_disaster(disaster_id: str) -> List[Task]:
+    """
+    Fetch all tasks whose `disaster_id` field matches the given disaster_id,
+    and return them as fully‐validated Task objects.
+    """
+    db = get_db()
+    query = db.collection("tasks").where("disaster_id", "==", disaster_id)
+    snaps = query.stream()
+
+    results: List[Task] = []
+    for snap in snaps:
+        data = snap.to_dict() or {}
+        # Snap.id is the Firestore doc ID, so pass it in explicitly
+        task = Task(id=snap.id, **data)
+        results.append(task)
+    return results

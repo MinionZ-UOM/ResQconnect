@@ -240,9 +240,9 @@ const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceSta
   };
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       {/* Header */}
-      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
               Resource Management

@@ -19,9 +19,9 @@ export default async function DashboardLayout({
   children,
   params,
 }: DashboardLayoutProps) {
-  const { role: slug } = await params
+  const role = "volunteer"
   // hyphens back to underscores
-  const backendRole = slug.replace(/-/g, "_")
+  const backendRole = role.replace(/-/g, "_")
   // validate
   if (!(backendRole in backendToUI)) {
     notFound()

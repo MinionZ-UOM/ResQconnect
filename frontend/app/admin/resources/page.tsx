@@ -1,15 +1,33 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import type React from "react";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,304 +36,286 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Plus, Search, Edit, Trash, MapPin } from "lucide-react"
-import type { Resource, ResourceType, ResourceStatus, Disaster } from "@/lib/types"
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, Search, Edit, Trash, MapPin } from "lucide-react";
+import type { Resource, ResourceType, ResourceStatus } from "@/lib/types";
+import { db } from "@/lib/firebaseClient";
+import { collection, query, where, doc, getDoc, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function ResourcesPage() {
-  const [selectedDisaster, setSelectedDisaster] = useState<string>("")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [typeFilter, setTypeFilter] = useState<ResourceType | "All">("All")
-  const [statusFilter, setStatusFilter] = useState<ResourceStatus | "All">("All")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<ResourceType | "All">("All");
+  const [statusFilter, setStatusFilter] = useState<ResourceStatus | "All">("All");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [userResources, setUserResources] = useState<Resource[]>([]);
+  const [resourceType, setResourceType] = useState("");
+  const [resourceQuantity, setResourceQuantity] = useState(1);
+  const [resourceLocationLat, setResourceLocationLat] = useState("");
+  const [resourceLocationLng, setResourceLocationLng] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUid, setCurrentUid] = useState("");
 
-  // Form state for adding a new resource
-  const [resourceName, setResourceName] = useState("")
-  const [resourceType, setResourceType] = useState<ResourceType | "">("")
-  const [resourceQuantity, setResourceQuantity] = useState(1)
-  const [resourceLocation, setResourceLocation] = useState("")
+const fetchResources = async () => {
+  const q = query(collection(db, "resources"));
+  const snapshot = await getDocs(q);
+  const data: Resource[] = snapshot.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      name: d.category,
+      type: d.category,
+      status: d.status === "not_available" ? "Not_Available" : "Available",
+      quantity: d.quantity_available,
+      location: {
+        latitude: d.location_lat,
+        longitude: d.location_lng,
+        address: `Lat: ${d.location_lat}, Lng: ${d.location_lng}`,
+      },
+      createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+      updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
+    };
+  });
+  setUserResources(data);
+};
 
-  // Mock disasters - in a real app, this would come from an API
-  const mockDisasters: Disaster[] = [
-    {
-      id: "disaster-001",
-      name: "California Wildfire",
-      type: "Wildfire",
-      status: "Active",
-      description: "Rapidly spreading wildfire in Northern California affecting multiple counties.",
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento, CA" },
-      affectedArea: { radius: 50 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-      severity: 4,
-      impactedPopulation: 25000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    },
-    {
-      id: "disaster-002",
-      name: "Hurricane Maria",
-      type: "Hurricane",
-      status: "Active",
-      description: "Category 3 hurricane approaching the Gulf Coast with heavy rainfall and strong winds.",
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston, TX" },
-      affectedArea: { radius: 100 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1), // 1 day ago
-      severity: 5,
-      impactedPopulation: 50000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "disaster-003",
-      name: "Midwest Flooding",
-      type: "Flood",
-      status: "Active",
-      description: "Severe flooding along the Mississippi River affecting multiple states.",
-      location: { latitude: 38.627, longitude: -90.1994, address: "St. Louis, MO" },
-      affectedArea: { radius: 75 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-      severity: 3,
-      impactedPopulation: 15000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    },
-  ]
-
-  // Mock resources - in a real app, this would come from an API
-  const mockResources: Resource[] = [
-    {
-      id: "resource-001",
-      disasterId: "disaster-001",
-      name: "Ambulance",
-      type: "Vehicle",
-      status: "Available",
-      quantity: 5,
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento Medical Center" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    },
-    {
-      id: "resource-002",
-      disasterId: "disaster-001",
-      name: "Fire Truck",
-      type: "Vehicle",
-      status: "InUse",
-      quantity: 3,
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento Fire Department" },
-      assignedTo: "user-101",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "resource-003",
-      disasterId: "disaster-001",
-      name: "Medical Supplies",
-      type: "Medical",
-      status: "Available",
-      quantity: 200,
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento Medical Center" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    },
-    {
-      id: "resource-004",
-      disasterId: "disaster-002",
-      name: "Rescue Boat",
-      type: "Vehicle",
-      status: "Available",
-      quantity: 10,
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston Coast Guard Station" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 6),
-    },
-    {
-      id: "resource-005",
-      disasterId: "disaster-002",
-      name: "Emergency Food Supplies",
-      type: "Food",
-      status: "Available",
-      quantity: 1000,
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston Convention Center" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    },
-    {
-      id: "resource-006",
-      disasterId: "disaster-003",
-      name: "Sandbags",
-      type: "Equipment",
-      status: "Available",
-      quantity: 5000,
-      location: { latitude: 38.627, longitude: -90.1994, address: "St. Louis Public Works" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-    },
-    {
-      id: "resource-007",
-      disasterId: "disaster-003",
-      name: "Water Pumps",
-      type: "Equipment",
-      status: "InUse",
-      quantity: 15,
-      location: { latitude: 38.627, longitude: -90.1994, address: "St. Louis Riverfront" },
-      assignedTo: "user-103",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 8),
-    },
-  ]
-
-  // Filter resources based on search query, type filter, and status filter
-  const filteredResources = mockResources.filter((resource) => {
-    const matchesSearch = searchQuery === "" || resource.name.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesType = typeFilter === "All" || resource.type === typeFilter
-    const matchesStatus = statusFilter === "All" || resource.status === statusFilter
-    const matchesDisaster = !selectedDisaster || resource.disasterId === selectedDisaster
-
-    return matchesSearch && matchesType && matchesStatus && matchesDisaster
-  })
-
-  const handleAddResource = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      // In a real app, this would be an API call to create the resource
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      console.log("Resource added:", {
-        disasterId: selectedDisaster,
-        name: resourceName,
-        type: resourceType,
-        quantity: resourceQuantity,
-        location: resourceLocation,
-      })
-
-      // Reset form
-      setResourceName("")
-      setResourceType("")
-      setResourceQuantity(1)
-      setResourceLocation("")
-      setIsAddDialogOpen(false)
-
-      // Show success message
-      alert("Resource added successfully!")
-    } catch (error) {
-      console.error("Error adding resource:", error)
-      alert("Error adding resource. Please try again.")
-    } finally {
-      setIsSubmitting(false)
+useEffect(() => {
+  const auth = getAuth();
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      setCurrentUid(user.uid);
+      await fetchResources(); // No UID needed
     }
+  });
+  return () => unsubscribe();
+}, []);
+
+
+const handleAddResource = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+
+  try {
+    const userDocRef = doc(db, "users", currentUid);
+    const userSnap = await getDoc(userDocRef);
+
+    if (!userSnap.exists()) {
+      throw new Error("User profile not found in Firestore");
+    }
+
+    const userData = userSnap.data();
+    const role_id = userData.role_id;
+
+    if (!role_id) {
+      throw new Error("role_id missing in user profile");
+    }
+
+    await addDoc(collection(db, "resources"), {
+      category: resourceType,
+      quantity_total: resourceQuantity,
+      quantity_available: resourceQuantity,
+      location_lat: parseFloat(resourceLocationLat),
+      location_lng: parseFloat(resourceLocationLng),
+      status: "available",
+      uid: currentUid,
+      role_id, 
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    });
+
+    await fetchResources(currentUid);
+    setResourceType("");
+    setResourceQuantity(1);
+    setResourceLocationLat("");
+    setResourceLocationLng("");
+    setIsAddDialogOpen(false);
+    alert("Resource added successfully!");
+  } catch (error) {
+    console.error("Error adding resource:", error);
+    alert(error.message || "Error adding resource. Please try again.");
+  } finally {
+    setIsSubmitting(false);
   }
+};
+
+
+const handleDeleteResource = async (resourceId: string) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this resource?");
+  if (!confirmDelete) return;
+
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const token = await user.getIdToken(); 
+
+    const res = await fetch(`/api/resources/${resourceId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, 
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Failed to delete resource");
+    }
+
+    alert("Resource deleted successfully!");
+    await fetchResources(currentUid); 
+  } catch (err: any) {
+    console.error("Error deleting resource:", err);
+    alert(err.message || "An error occurred while deleting the resource");
+  }
+};
+
+const handleUpdateStatus = async (resourceId: string, currentStatus: ResourceStatus) => {
+  const nextStatus: ResourceStatus = currentStatus === "Available" ? "Not_Available" : "Available";
+
+  const confirmUpdate = window.confirm(`Change status to ${nextStatus}?`);
+  if (!confirmUpdate) return;
+
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const token = await user.getIdToken(); 
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userDocRef);
+    if (!userSnap.exists()) throw new Error("User data not found in Firestore");
+
+    const userData = userSnap.data();
+    const role_id = userData.role_id;
+    if (!role_id) throw new Error("role_id missing for user");
+
+    const res = await fetch(`/api/resources/${resourceId}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        status: nextStatus.toLowerCase(), // "available" or "not_available"
+        role_id, 
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Failed to update status");
+    }
+
+    alert(`Resource status updated to ${nextStatus}`);
+    await fetchResources(currentUid);
+  } catch (err: any) {
+    console.error("Error updating resource status:", err);
+    alert(err.message || "An error occurred while updating status");
+  }
+};
+
+
+  const filteredResources = userResources.filter((r) => {
+    const matchesSearch = searchQuery === "" || r.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "All" || r.type === typeFilter;
+    const matchesStatus = statusFilter === "All" || r.status === statusFilter;
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   const getStatusBadge = (status: ResourceStatus) => {
     switch (status) {
       case "Available":
-        return <Badge className="bg-green-500">Available</Badge>
-      case "InUse":
-        return <Badge className="bg-blue-500">In Use</Badge>
-      case "Maintenance":
-        return <Badge className="bg-yellow-500">Maintenance</Badge>
-      case "Depleted":
-        return <Badge className="bg-red-500">Depleted</Badge>
+        return <Badge className="bg-green-500">Available</Badge>;
+      case "Not_Available":
+        return <Badge className="bg-red-500">Not Available</Badge>;
     }
-  }
+  };
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+      <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Resource Management</h1>
-          <p className="text-slate-600 dark:text-slate-400">Manage and track resources for disaster response</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+              Resource Management
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">
+            Manage and track your resources
+          </p>
         </div>
-
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Resource
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Add Resource
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Resource</DialogTitle>
-              <DialogDescription>Add a new resource to the system for disaster response.</DialogDescription>
+              <DialogDescription>Fill in the resource details.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddResource}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="disaster">Disaster</Label>
-                  <Select value={selectedDisaster} onValueChange={setSelectedDisaster} required>
-                    <SelectTrigger id="disaster">
-                      <SelectValue placeholder="Select disaster" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockDisasters.map((disaster) => (
-                        <SelectItem key={disaster.id} value={disaster.id}>
-                          {disaster.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Resource Name</Label>
-                  <Input
-                    id="name"
-                    value={resourceName}
-                    onChange={(e) => setResourceName(e.target.value)}
-                    placeholder="E.g., Ambulance, Medical Supplies"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Resource Type</Label>
-                  <Select
-                    value={resourceType}
-                    onValueChange={(value) => setResourceType(value as ResourceType)}
-                    required
-                  >
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Vehicle">Vehicle</SelectItem>
-                      <SelectItem value="Medical">Medical</SelectItem>
-                      <SelectItem value="Food">Food</SelectItem>
-                      <SelectItem value="Shelter">Shelter</SelectItem>
-                      <SelectItem value="Equipment">Equipment</SelectItem>
-                      <SelectItem value="Personnel">Personnel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantity</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min={1}
-                    value={resourceQuantity}
-                    onChange={(e) => setResourceQuantity(Number.parseInt(e.target.value))}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={resourceLocation}
-                    onChange={(e) => setResourceLocation(e.target.value)}
-                    placeholder="E.g., Sacramento Medical Center"
-                    required
-                  />
-                </div>
+            <form onSubmit={handleAddResource} className="space-y-4">
+              <div>
+                <Label htmlFor="type">Resource Type</Label>
+                <Select value={resourceType} onValueChange={(val) => setResourceType(val)}>
+                  <SelectTrigger id="type">
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vehicle">Vehicle</SelectItem>
+                    <SelectItem value="food">Food</SelectItem>
+                    <SelectItem value="medicine">Medicine</SelectItem>
+                    <SelectItem value="water">Water</SelectItem>
+                    <SelectItem value="clothing">Clothing</SelectItem>
+                    <SelectItem value="shelter">Shelter</SelectItem>
+                    <SelectItem value="rescue_equipment">Rescue Equipment</SelectItem>
+                    <SelectItem value="communication_device">Communication Device</SelectItem>
+                    <SelectItem value="power_supply">Power Supply</SelectItem>
+                    <SelectItem value="sanitation_kit">Sanitation Kit</SelectItem>
+                    <SelectItem value="fuel">Fuel</SelectItem>
+                    <SelectItem value="medical_kit">Medical Kit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min={1}
+                  value={resourceQuantity}
+                  onChange={(e) => setResourceQuantity(Number(e.target.value))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="lat">Latitude</Label>
+                <Input
+                  id="lat"
+                  value={resourceLocationLat}
+                  onChange={(e) => setResourceLocationLat(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="lng">Longitude</Label>
+                <Input
+                  id="lng"
+                  value={resourceLocationLng}
+                  onChange={(e) => setResourceLocationLng(e.target.value)}
+                  required
+                />
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isSubmitting || !selectedDisaster || !resourceName || !resourceType}>
+                <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Adding..." : "Add Resource"}
                 </Button>
               </DialogFooter>
@@ -324,57 +324,46 @@ export default function ResourcesPage() {
         </Dialog>
       </header>
 
+      {/* Filters */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Resource Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="disaster-filter">Disaster</Label>
-              <Select value={selectedDisaster} onValueChange={setSelectedDisaster}>
-                <SelectTrigger id="disaster-filter">
-                  <SelectValue placeholder="All Disasters" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Disasters</SelectItem>
-                  {mockDisasters.map((disaster) => (
-                    <SelectItem key={disaster.id} value={disaster.id}>
-                      {disaster.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="type-filter">Resource Type</Label>
-              <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as ResourceType | "All")}>
+              <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val as ResourceType | "All")}>
                 <SelectTrigger id="type-filter">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Types</SelectItem>
-                  <SelectItem value="Vehicle">Vehicle</SelectItem>
-                  <SelectItem value="Medical">Medical</SelectItem>
-                  <SelectItem value="Food">Food</SelectItem>
-                  <SelectItem value="Shelter">Shelter</SelectItem>
-                  <SelectItem value="Equipment">Equipment</SelectItem>
-                  <SelectItem value="Personnel">Personnel</SelectItem>
+                  <SelectItem value="vehicle">Vehicle</SelectItem>
+                  <SelectItem value="food">Food</SelectItem>
+                  <SelectItem value="medicine">Medicine</SelectItem>
+                  <SelectItem value="water">Water</SelectItem>
+                  <SelectItem value="clothing">Clothing</SelectItem>
+                  <SelectItem value="shelter">Shelter</SelectItem>
+                  <SelectItem value="rescue_equipment">Rescue Equipment</SelectItem>
+                  <SelectItem value="communication_device">Communication Device</SelectItem>
+                  <SelectItem value="power_supply">Power Supply</SelectItem>
+                  <SelectItem value="sanitation_kit">Sanitation Kit</SelectItem>
+                  <SelectItem value="fuel">Fuel</SelectItem>
+                  <SelectItem value="medical_kit">Medical Kit</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label htmlFor="status-filter">Status</Label>
-              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ResourceStatus | "All")}>
+              <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as ResourceStatus | "All")}>
                 <SelectTrigger id="status-filter">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Statuses</SelectItem>
                   <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="InUse">In Use</SelectItem>
-                  <SelectItem value="Maintenance">Maintenance</SelectItem>
-                  <SelectItem value="Depleted">Depleted</SelectItem>
+                  <SelectItem value="Not_Available">Not Available</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -395,6 +384,7 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
 
+      {/* Resource Table */}
       <Card>
         <CardHeader>
           <CardTitle>Resources</CardTitle>
@@ -410,44 +400,62 @@ export default function ResourcesPage() {
                   <TableHead>Quantity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Disaster</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResources.map((resource) => {
-                  const disaster = mockDisasters.find((d) => d.id === resource.disasterId)
-                  return (
-                    <TableRow key={resource.id}>
-                      <TableCell className="font-medium">{resource.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{resource.type}</Badge>
-                      </TableCell>
-                      <TableCell>{resource.quantity}</TableCell>
-                      <TableCell>{getStatusBadge(resource.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{resource.location?.address || "Unknown"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{disaster?.name || "Unknown"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {filteredResources.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell><Badge variant="outline">{r.type}</Badge></TableCell>
+                    <TableCell>{r.quantity}</TableCell>
+                    <TableCell>{getStatusBadge(r.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        <span>{r.location?.address || "Unknown"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleUpdateStatus(r.id, r.status)}
+                              >
+                                <Edit className="h-4 w-4 text-blue-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Change Availability Status</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteResource(r.id)}
+                              >
+                                <Trash className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete Resource</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
                 {filteredResources.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4 text-slate-500">
+                    <TableCell colSpan={6} className="text-center py-4 text-slate-500">
                       No resources found matching the current filters.
                     </TableCell>
                   </TableRow>
@@ -458,5 +466,5 @@ export default function ResourcesPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
