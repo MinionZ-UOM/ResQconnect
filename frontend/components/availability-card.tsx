@@ -7,6 +7,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { callApi } from '@/lib/api'
 
+export interface AvailabilityUpdate {
+  availability: boolean
+  location?: { lat: number; lng: number }  // <- allow coords
+}
+
 export default function AvailabilityCard() {
   const [available, setAvailable] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -33,10 +38,29 @@ export default function AvailabilityCard() {
     const next = !available
     setLoading(true)
     try {
+      // If turning ON availability, ask if they want to update coords
+      let payload: AvailabilityUpdate = { availability: next }
+      if (next) {
+        const updateLoc = window.confirm(
+          'You just became available – would you like to update your location now?'
+        )
+        if (updateLoc) {
+          const latStr = window.prompt('Enter your current latitude:')
+          const lngStr = window.prompt('Enter your current longitude:')
+          const lat = latStr ? parseFloat(latStr) : NaN
+          const lng = lngStr ? parseFloat(lngStr) : NaN
+          if (!isNaN(lat) && !isNaN(lng)) {
+            payload.location = { lat, lng }
+          } else {
+            alert('Invalid coordinates entered; skipping location update.')
+          }
+        }
+      }
+
       await callApi<void>(
         'users/me/availability',
         'PATCH',
-        { availability: next }
+        payload
       )
       setAvailable(next)
     } catch (err: any) {
@@ -47,7 +71,6 @@ export default function AvailabilityCard() {
     }
   }
 
-  // Optionally show a loading state until we know the flag
   if (loading) {
     return (
       <Card className="sm:col-span-2 md:col-span-2 p-6 bg-gray-50">
@@ -87,9 +110,4 @@ export default function AvailabilityCard() {
       </CardContent>
     </Card>
   )
-}
-
-// Don't forget to import the AvailabilityUpdate type:
-export interface AvailabilityUpdate {
-  availability: boolean
 }
