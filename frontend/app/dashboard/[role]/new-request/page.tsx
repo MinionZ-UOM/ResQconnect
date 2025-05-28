@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Disaster, GeoLocation, RequestType, RequestPriority } from "@/lib/types";
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
+import { enqueueRequest } from "@/lib/offlineQueue";
 
 interface MediaItem {
   url:     string;
@@ -145,7 +146,6 @@ export default function NewRequestPage() {
     }
   };
 
-  // Final form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
@@ -153,7 +153,7 @@ export default function NewRequestPage() {
       return;
     }
     setIsSubmitting(true);
-
+  
     const payload = {
       disaster_id: selectedDisaster === "none" ? null : selectedDisaster,
       title,
@@ -163,21 +163,49 @@ export default function NewRequestPage() {
       location: { lat: location.latitude, lng: location.longitude },
       media,
     };
-
-    try {
-      await callApi("requests", "POST", payload);
-      alert("Request submitted!");
-      router.push(
-        `/dashboard/affected/requests${
-          selectedDisaster !== "none" ? `?disasterId=${selectedDisaster}` : ""
-        }`
-      );
-    } catch {
-      alert("Submit failed.");
-      setIsSubmitting(false);
-    }
+  
+    const doSubmit = async () => {
+      // 1) offline? queue it and bail out
+      if (!navigator.onLine) {
+        await enqueueRequest({
+          url: "requests",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert(
+          "You appear to be offline. Your request has been saved locally and will sync once you’re back online."
+        );
+        router.push(
+          `/dashboard/affected-individual`);
+        return;
+      }
+  
+      // 2) online → try the real POST
+      try {
+        await callApi("requests", "POST", payload);
+        alert("Request submitted!");
+        router.push(
+          `/dashboard/affected-individual`);
+      } catch {
+        // enqueue on server-error as well
+        await enqueueRequest({
+          url: "requests",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert(
+          "Submit failed; your request is saved locally and will retry when online."
+        );
+        router.push(
+          `/dashboard/affected-individual`);
+      }
+    };
+  
+    await doSubmit();
   };
-
+  
   return (
     <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       <h1 className="text-2xl md:text-3xl font-semibold mb-6">New Request</h1>
