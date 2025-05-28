@@ -1,3 +1,4 @@
+// pages/admin/task-allocations.tsx
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
@@ -67,7 +68,7 @@ interface ResourceAllocation {
 interface TaskAllocation {
   task: Task
   resource_allocations: ResourceAllocation[]
-  volunteer_allocations: any[]   // adjust as needed
+  volunteer_allocations: any[]
 }
 
 interface SuggestionResponse {
@@ -85,34 +86,51 @@ interface SuggestionResponse {
 }
 
 export default function AdminTaskAllocationsPage() {
-  // Disasters
+  // Disasters list
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [selectedDisaster, setSelectedDisaster] = useState<string>("")
 
-  // Suggestions cache: disaster_id -> response
+  // Suggestions cache (persisted to localStorage)
   const [cache, setCache] = useState<Record<string, SuggestionResponse>>({})
 
   // UI state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Hydrate cache from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("aiTaskAllocations")
+      if (saved) {
+        setCache(JSON.parse(saved))
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [])
+
   // Load disasters on mount
   useEffect(() => {
-    async function load() {
+    async function loadDisasters() {
       try {
         const data = await callApi<Disaster[]>("disasters/", "GET")
         setDisasters(data)
-        if (data.length) {
+        if (data.length > 0) {
           setSelectedDisaster(data[0].id)
         }
       } catch {
         console.error("Failed to fetch disasters")
       }
     }
-    load()
+    loadDisasters()
   }, [])
 
-  // Handler to fetch suggestions
+  // Clear error when disaster selection changes
+  useEffect(() => {
+    setError(null)
+  }, [selectedDisaster])
+
+  // Fetch AI suggestions for the selected disaster
   const fetchSuggestions = useCallback(async () => {
     if (!selectedDisaster) return
     setLoading(true)
@@ -123,10 +141,19 @@ export default function AdminTaskAllocationsPage() {
         `resources/suggest/${selectedDisaster}`,
         "POST"
       )
-      setCache((prev) => ({
-        ...prev,
-        [selectedDisaster]: response,
-      }))
+
+      // Update in-memory cache and persist to localStorage
+      setCache((prev) => {
+        const next = {
+          ...prev,
+          [selectedDisaster]: response,
+        }
+        window.localStorage.setItem(
+          "aiTaskAllocations",
+          JSON.stringify(next)
+        )
+        return next
+      })
     } catch (err: any) {
       console.error(err)
       setError(err?.message || "Failed to fetch AI suggestions")
@@ -135,12 +162,7 @@ export default function AdminTaskAllocationsPage() {
     }
   }, [selectedDisaster])
 
-  // Clear any previous error when disaster changes
-  useEffect(() => {
-    setError(null)
-  }, [selectedDisaster])
-
-  // Extract current suggestions from cache
+  // Current suggestions for the selected disaster
   const current = cache[selectedDisaster]
 
   return (
@@ -161,7 +183,7 @@ export default function AdminTaskAllocationsPage() {
         </Button>
       </header>
 
-      {/* Filters */}
+      {/* Disaster selector */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Disaster</CardTitle>
@@ -185,29 +207,32 @@ export default function AdminTaskAllocationsPage() {
         </CardContent>
       </Card>
 
-      {/* Error */}
+      {/* Error message */}
       {error && (
         <p className="mb-6 text-red-500 font-medium">{error}</p>
       )}
 
-      {/* When we have no cached suggestions yet */}
+      {/* Prompt to run allocation if none cached */}
       {!current && !loading && !error && (
         <p className="text-gray-500">
           Click “Reallocate using AI agents” to fetch task allocations.
         </p>
       )}
 
-      {/* Display suggestions */}
+      {/* Display cached suggestions */}
       {current && (
         <>
+          {/* Disaster summary */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Disaster Summary</CardTitle>
-              <CardDescription>{current.disaster.disaster_summary}</CardDescription>
+              <CardDescription>
+                {current.disaster.disaster_summary}
+              </CardDescription>
             </CardHeader>
           </Card>
 
-          {/* Tasks without allocations */}
+          {/* Identified tasks */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Identified Tasks</CardTitle>
@@ -217,7 +242,7 @@ export default function AdminTaskAllocationsPage() {
                 {current.tasks.map((t, i) => (
                   <li key={i}>
                     <strong>[{t.urgency.toUpperCase()}]</strong>{" "}
-                    {t.description} &mdash; Needs {t.manpower_requirement} people; Resources:{" "}
+                    {t.description} — Needs {t.manpower_requirement} people; Resources:{" "}
                     {t.resource_requirements
                       .map((r) => `${r.quantity}× ${r.resource_type}`)
                       .join(", ")}
@@ -227,7 +252,7 @@ export default function AdminTaskAllocationsPage() {
             </CardContent>
           </Card>
 
-          {/* Allocations */}
+          {/* AI-recommended allocations */}
           <Card>
             <CardHeader>
               <CardTitle>AI-Recommended Allocations</CardTitle>
