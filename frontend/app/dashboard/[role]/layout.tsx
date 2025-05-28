@@ -1,7 +1,7 @@
 // frontend/app/dashboard/[role]/layout.tsx
 import type React from "react"
 import { MainSidebar } from "@/components/main-sidebar"
-import { SidebarInset } from "@/components/ui/sidebar"
+import { Sidebar, SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import type { UserRole } from "@/lib/types"
 import { uiToBackend } from "@/lib/roles"
 import { notFound } from "next/navigation"
@@ -42,9 +42,16 @@ export default async function DashboardLayout({
         userInitials={userInitials}
       />
 
-      <SidebarInset>
+      {/* <SidebarInset> */}
         <div className="h-full overflow-auto">{children}</div>
-      </SidebarInset>
+      {/* </SidebarInset>? */}
     </div>
+    // <SidebarProvider>
+    //   <Sidebar></Sidebar>
+
+    //   <SidebarInset>
+    //     {children}
+    //   </SidebarInset>
+    // </SidebarProvider>
   )
 }

@@ -210,7 +210,7 @@ export default function AdminRequestsPage() {
     }[s] || <Badge>{s}</Badge>)
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       {/* Header */}
       <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:justify-between items-start gap-4">
         <div>
