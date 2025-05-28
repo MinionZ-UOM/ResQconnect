@@ -3,6 +3,7 @@ import json
 from typing import List
 
 from app.agent.schemas.volunteer import Volunteer as AgentVolunteer
+from app.agent.schemas.volunteer import Volunteer
 from app.agent.schemas.common import Coordinates
 from app.agent.schemas.types import StatusType
 
@@ -21,7 +22,19 @@ from app.crud.user import get_user_availability
 #     with open(VOLUNTEERS_FILE, "r") as file:
 #         volunteers_data = json.load(file)
     
-#     return [Volunteer(**vol) for vol in volunteers_data]
+#     normalized = []
+#     for vol in volunteers_data:
+#         # Normalize location keys if present
+#         loc = vol.get("location")
+#         if isinstance(loc, dict):
+#             vol["location"] = {
+#                 "lat": loc.get("latitude"),
+#                 "lng": loc.get("longitude"),
+#             }
+#         normalized.append(vol)
+    
+#     return [Volunteer(**vol) for vol in normalized]
+
 
 # def get_all_volunteer_ids_by_disaster(disaster_id: int) -> List[str]:
 #     RESOURCES_FILE = "app/agent/data/volunteers.json"
@@ -47,19 +60,29 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> List[AgentVolunteer]:
 
     agents: List[AgentVolunteer] = []
     for rec in backend:
-        # rec is a dict with at least: uid, location_lat, location_lng
-        uid = rec["uid"]
+        uid = rec.get("uid")
+        if uid is None:
+            continue
+
+        lat = rec.get("location_lat")
+        lng = rec.get("location_lng")
+        if lat is None or lng is None:
+            continue
+
         # look up availability flag
         available = get_user_availability(uid)
+        # map available → "active", else → "inactive"
+        status_str = "active" if available else "inactive"
+
         agents.append(
             AgentVolunteer(
                 id=uid,
-                location=Coordinates(lat=rec["location_lat"], lng=rec["location_lng"]),
-                status=StatusType.AVAILABLE if available else StatusType.NOT_AVAILABLE,
+                location=Coordinates(lat=lat, lng=lng),
+                status=status_str,
             )
         )
-    return agents
 
+    return agents
 
 def get_all_volunteer_ids_by_disaster(disaster_id: str) -> List[str]:
     """
