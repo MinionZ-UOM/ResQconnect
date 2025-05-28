@@ -57,7 +57,7 @@ export default function Home() {
               <Button
                 className="text-2xl px-20 py-10 rounded-xl bg-blue-600/70 text-white font-bold backdrop-blur-md border border-white/30 shadow-xl hover:bg-blue-600/90 transition-all duration-300"
               >
-                REGISTER NOW
+                GET STARTED
               </Button>
             </Link>
           </div>
