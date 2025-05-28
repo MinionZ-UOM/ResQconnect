@@ -185,7 +185,7 @@ export default function VolunteerReportPage() {
   };
 
   return (
-    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">    
       <header className="mb-6 ml-8 md:ml-0">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Report Field Observation</h1>
       </header>
