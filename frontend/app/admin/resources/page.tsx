@@ -226,8 +226,8 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="fixed inset-0 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
+      <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Resource Management</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage and track resources for disaster response</p>
