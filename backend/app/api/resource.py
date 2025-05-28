@@ -2,6 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.resource import ResourceCreate, Resource, ResourceUpdate, StatusChangePayload
 from app.core.permissions import require_perms
 from app.crud import resource as crud
+from typing import List, Dict, Any
+from app.agent.schemas.state import State
+from app.agent.core.manager import Manager
+from fastapi.responses import JSONResponse
+from app.crud.disaster import get_disaster
+from app.crud.task import get_tasks_by_disaster
+from app.crud.resource import get_request_resources 
+
+from app.agent.core.manager import Manager
 
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
@@ -100,3 +109,123 @@ def change_resource_status(rid: str, payload: StatusChangePayload):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update status: {str(e)}")
+    
+
+URGENCY_MAP = {
+    1: "low",
+    2: "medium",
+    3: "high",
+    4: "critical",
+}
+
+def map_urgency(raw: Any) -> str:
+    """
+    Normalize whatever `raw` is into one of "low","medium","high","critical".
+    """
+    if isinstance(raw, int):
+        return URGENCY_MAP.get(raw, "medium")
+    # If it’s already a string:
+    s = str(raw).lower()
+    if s in URGENCY_MAP.values():
+        return s
+    # Missing or unknown ⇒ default
+    return "medium"
+
+
+@router.post(
+    "/suggest/{disaster_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def suggest(disaster_id: str) -> Any:
+    print(f"[DEBUG] → suggest() called with disaster_id={disaster_id}")
+
+    # 1) Fetch the Disaster
+    disaster = get_disaster(disaster_id)
+    if not disaster:
+        print(f"[DEBUG] ← Disaster {disaster_id} not found")
+        raise HTTPException(status_code=404, detail="Disaster not found")
+    print(f"[DEBUG] • Found disaster: {disaster_id}")
+
+    # 2) Fetch tasks
+    tasks = get_tasks_by_disaster(disaster_id)
+    print(f"[DEBUG] • Retrieved {len(tasks)} tasks: {[t.id for t in tasks]}")
+    if not tasks:
+        print(f"[DEBUG] ← No tasks found for disaster {disaster_id}")
+        raise HTTPException(status_code=404, detail="No tasks found for this disaster")
+
+    # 3) Filter & format
+    filtered_tasks: List[Dict[str, Any]] = []
+    for t in tasks:
+        print(f"[DEBUG] → Checking resources for task {t.id}")
+        resources_map = get_request_resources(t.id)
+        if not resources_map:
+            print(f"[DEBUG]   ↳ No resources for task {t.id}, skipping")
+            continue
+
+        tr = resources_map[t.id]
+        raw_reqs = tr.get("resource_requirements", [])
+        manpower = tr.get("manpower_requirement")
+        print(f"[DEBUG]   ↳ Found {len(raw_reqs)} resource entries, manpower={manpower!r}")
+
+        # Unwrap your ['key', value] pairs
+        formatted_reqs = []
+        for rr in raw_reqs:
+            rt = rr.get("resource_type")
+            qty = rr.get("quantity")
+            if isinstance(rt, list) and isinstance(qty, list):
+                formatted_reqs.append({
+                    "resource_type": rt[1],
+                    "quantity":       qty[1],
+                })
+                print(f"[DEBUG]     • resource_type={rt[1]}, quantity={qty[1]}")
+            else:
+                formatted_reqs.append({
+                    "resource_type": rt,
+                    "quantity":       qty,
+                })
+                print(f"[DEBUG]     • resource_type={rt!r}, quantity={qty!r}")
+
+        # ── handle missing .urgency safely ──
+        raw_urgency = getattr(t, "urgency", None)
+        urgency = map_urgency(raw_urgency)
+        print(f"[DEBUG]   ↳ raw_urgency={raw_urgency!r} mapped to '{urgency}'")
+
+        filtered_tasks.append({
+            "name":                  None,
+            "description":           t.instructions,
+            "urgency":               urgency,
+            "resource_requirements": formatted_reqs,
+            "manpower_requirement":  manpower,
+        })
+
+    print(f"[DEBUG] ← Built filtered_tasks with {len(filtered_tasks)} entries")
+
+    # 4) Build response
+    response_content = {
+        "previous_action": "task_creation",
+        "next_action":     "task_allocation",
+        "request":         None,
+        "disaster": {
+            "disaster_id":   disaster_id,
+            "disaster_type": getattr(disaster, "type", "") or "",
+            "disaster_coordinates": {
+                "lat": disaster.location.lat,
+                "lng": disaster.location.lng
+            },
+            "disaster_location": None,
+            "disaster_summary":  disaster.description
+        },
+        "tasks":            filtered_tasks,
+        "task_allocations": None
+    }
+
+    print(f"[DEBUG] → Returning response with {len(filtered_tasks)} tasks")
+
+    ## Now we should pass this to the manager and he should handle the rest 
+    manager = Manager()
+
+    response = manager.run(response_content)
+    
+    return response   
+
+    # return JSONResponse(content=response_content)
