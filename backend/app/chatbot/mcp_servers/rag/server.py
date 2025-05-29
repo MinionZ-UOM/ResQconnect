@@ -45,21 +45,21 @@ def build_vectorstores_from_pdfs(source_dir: str = 'docs', target_dir: str = 've
 
 @mcp.tool()
 def retrieve_from_collection(
-    collection_name: str,
+    disaster_type: str,
     query: str,
     k: int = 3,
     target_dir: str = 'vectorstore'
 ) -> List[Document]:
     """
     Retrieves guidelines for disasters using a rag pipeline
-    input should be collection name which is the disaster name
+    input should be disaster type such as flood, landslide, etc.
     Load a vectorstore collection and retrieve top-k documents for a given query.
     """
 
-    collection_path = Path(target_dir) / collection_name
+    collection_path = Path(target_dir) / disaster_type
 
     if not collection_path.exists():
-        raise FileNotFoundError(f"Collection '{collection_name}' not found in '{target_dir}'")
+        raise FileNotFoundError(f"Collection '{disaster_type}' not found in '{target_dir}'")
 
     # Load embedding model
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
