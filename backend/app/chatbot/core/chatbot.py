@@ -16,6 +16,7 @@ from app.chatbot.schemas.user import User
 
 from app.chatbot.guardrails.domain_check import is_domain_relevant
 from app.chatbot.guardrails.ethics_check import is_prompt_safe
+from app.chatbot.utils.summarizer import ChatSummarizer
 
 from langfuse import Langfuse
 
@@ -28,6 +29,7 @@ class Chatbot:
         self.tools = None
         self.graph = None
         self.langfuse = Langfuse()
+        self.chat_summarizer = ChatSummarizer()
 
     def load_config(self):
         with open(self.config_path, "r") as f:
@@ -51,20 +53,31 @@ class Chatbot:
         builder.add_edge("tools", "call_model")
         self.graph = builder.compile()
 
-    async def ask(self, prompt: str, user: User):
+    async def ask(self, prompt: str, user: User, chat_history=list):
         if self.graph is None:
             raise RuntimeError("Graph not initialized. Call setup() first.")
+        
+        if len(chat_history) > 0:
+            context = self.chat_summarizer.get_contextual_prompt(chat_history, prompt)
+
+            prompt_with_context = f"""
+            user_prompt is : {prompt}
+            context_from_chat_history : {context}
+            """
+        else:
+            prompt_with_context = prompt
 
         # Run guardrails
-        if not await is_prompt_safe(prompt):
+        if not await is_prompt_safe(prompt_with_context):
             return {"message": "Your input was flagged as inappropriate or unethical. Please reformulate your query respectfully."}
 
-        if not await is_domain_relevant(prompt):
+        if not await is_domain_relevant(prompt_with_context):
             return {"message": "This chatbot is specialized for disaster management topics. Please ask something related to disasters, volunteers, or aid coordination."}
 
+        
         message = f"""
         The user info is : {user.dict()}
-        user_prompt is : {prompt}
+        {prompt_with_context}
         """
 
         trace = self.langfuse.trace()

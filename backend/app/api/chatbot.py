@@ -12,7 +12,7 @@ async def ask(
     
     client = Chatbot()
     await client.setup()
-    response = await client.ask(prompt=body.prompt, user=body.user)
+    response = await client.ask(prompt=body.prompt, user=body.user, chat_history=body.chat_history)
     
     return response
 
