@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,109 +9,89 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search } from "lucide-react"
+import { db } from "@/lib/firebaseClient"
+import { collection, getDoc, getDocs, doc } from "firebase/firestore"
 import type { User, UserRole } from "@/lib/types"
 
-// Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend)
 
 interface UserStatsProps {
   disasterId?: string
 }
 
+const roleMap: Record<string, UserRole> = {
+  affected_individual: "Affected",
+  volunteer: "Volunteer",
+  first_responder: "Responder",
+  admin: "Admin",
+}
+
 export function UserStats({ disasterId }: UserStatsProps) {
   const [view, setView] = useState<"chart" | "table">("chart")
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<UserRole | "All">("All")
+  const [users, setUsers] = useState<User[]>([])
 
-  // Mock users data - in a real app, this would come from an API
-  const mockUsers: User[] = [
-    {
-      id: "user-101",
-      name: "John Smith",
-      email: "john.smith@example.com",
-      role: "Responder",
-      skills: ["Medical", "Search and Rescue"],
-      availability: true,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30), // 30 days ago
-    },
-    {
-      id: "user-102",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@example.com",
-      role: "Responder",
-      skills: ["Firefighting", "First Aid"],
-      availability: true,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25), // 25 days ago
-    },
-    {
-      id: "user-103",
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-      role: "Volunteer",
-      skills: ["Driving", "Communication"],
-      availability: true,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20), // 20 days ago
-    },
-    {
-      id: "user-104",
-      name: "Emily Davis",
-      email: "emily.davis@example.com",
-      role: "Volunteer",
-      skills: ["First Aid", "Cooking"],
-      availability: false,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15), // 15 days ago
-    },
-    {
-      id: "user-105",
-      name: "David Wilson",
-      email: "david.wilson@example.com",
-      role: "Affected",
-      availability: false,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10), // 10 days ago
-    },
-    {
-      id: "user-106",
-      name: "Lisa Martinez",
-      email: "lisa.martinez@example.com",
-      role: "Affected",
-      availability: false,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-    },
-    {
-      id: "user-107",
-      name: "Robert Taylor",
-      email: "robert.taylor@example.com",
-      role: "Admin",
-      availability: true,
-      location: { latitude: 38.5816, longitude: -121.4944 },
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60), // 60 days ago
-    },
-  ]
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        let participantUids: string[] = []
 
-  // Filter users based on search query and role filter
-  const filteredUsers = mockUsers.filter((user) => {
+        if (disasterId && disasterId !== "all") {
+          const disasterRef = doc(db, "disasters", disasterId)
+          const participantsSnap = await getDocs(collection(disasterRef, "participants"))
+          participantUids = participantsSnap.docs.map((doc) => doc.id)
+        } else {
+          const usersSnap = await getDocs(collection(db, "users"))
+          participantUids = usersSnap.docs.map((doc) => doc.id)
+        }
+
+        const userPromises = participantUids.map(async (uid) => {
+          const userSnap = await getDoc(doc(db, "users", uid))
+          if (!userSnap.exists()) return null
+
+          const userData = userSnap.data()
+          const roleKey = userData.role_id
+          const mappedRole = roleMap[roleKey] || "Affected"
+
+          return {
+            id: uid,
+            name: userData.display_name ?? "Unnamed",
+            email: userData.email ?? "",
+            role: mappedRole,
+            skills: userData.skills ?? [],
+            availability: userData.availability ?? false,
+            location: userData.location,
+            createdAt: userData.created_at?.toDate?.() ?? new Date(),
+          } satisfies User
+        })
+
+        const usersList = (await Promise.all(userPromises)).filter(Boolean) as User[]
+        //console.log("Fetched Users:", usersList)
+        setUsers(usersList)
+      } catch (error) {
+        console.error("Error fetching users:", error)
+      }
+    }
+
+    fetchUsers()
+  }, [disasterId])
+
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
       searchQuery === "" ||
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesRole = roleFilter === "All" || user.role === roleFilter
-
     return matchesSearch && matchesRole
   })
 
-  // Count users by role for chart
   const roleCounts = {
-    Responder: mockUsers.filter((user) => user.role === "Responder").length,
-    Volunteer: mockUsers.filter((user) => user.role === "Volunteer").length,
-    Affected: mockUsers.filter((user) => user.role === "Affected").length,
-    Admin: mockUsers.filter((user) => user.role === "Admin").length,
+    Responder: users.filter((u) => u.role === "Responder").length,
+    Volunteer: users.filter((u) => u.role === "Volunteer").length,
+    Affected: users.filter((u) => u.role === "Affected").length,
+    Admin: users.filter((u) => u.role === "Admin").length,
   }
 
   const chartData = {
@@ -140,9 +120,7 @@ export function UserStats({ disasterId }: UserStatsProps) {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: "right" as const,
-      },
+      legend: { position: "right" as const },
     },
   }
 
@@ -179,7 +157,7 @@ export function UserStats({ disasterId }: UserStatsProps) {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as UserRole | "All")}>
+            <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as UserRole | "All")}>
               <SelectTrigger className="w-full md:w-[150px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
@@ -207,10 +185,8 @@ export function UserStats({ disasterId }: UserStatsProps) {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Skills</TableHead>
                 <TableHead>Availability</TableHead>
                 <TableHead>Registered</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -225,16 +201,15 @@ export function UserStats({ disasterId }: UserStatsProps) {
                         user.role === "Responder"
                           ? "border-red-500 text-red-500"
                           : user.role === "Volunteer"
-                            ? "border-green-500 text-green-500"
-                            : user.role === "Affected"
-                              ? "border-blue-500 text-blue-500"
-                              : "border-purple-500 text-purple-500"
+                          ? "border-green-500 text-green-500"
+                          : user.role === "Affected"
+                          ? "border-blue-500 text-blue-500"
+                          : "border-purple-500 text-purple-500"
                       }
                     >
                       {user.role}
                     </Badge>
                   </TableCell>
-                  <TableCell>{user.skills?.join(", ") || "N/A"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={user.availability ? "default" : "outline"}
@@ -244,11 +219,6 @@ export function UserStats({ disasterId }: UserStatsProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="outline">
-                      View
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
