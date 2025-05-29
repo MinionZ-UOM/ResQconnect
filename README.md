@@ -18,6 +18,7 @@
 
     ```env
     GOOGLE_APPLICATION_CREDENTIALS=app/secrets/firebase_cred.json
+    GOOGLE_APPLICATION_CREDENTIALS_MCP=secrets/firebase_cred.json
     GROQ_API_KEY=your_api_key
     LANGFUSE_SECRET_KEY=""
     LANGFUSE_PUBLIC_KEY=""
