@@ -39,7 +39,7 @@
         ```bash
         source env/bin/activate
         ```
-5.  **OPTIONAL**
+5.  **OPTIONAL Script to start all the services at once**
     -   You can start all the services required for the backend (celerty worker, MCP servers and FAST API) try running the following script if it fails follow the given steps :
         ```bash
          .\setup_backend.ps1
