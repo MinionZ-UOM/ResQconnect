@@ -79,7 +79,7 @@ def join_disaster(disaster_id: str, uid: str, role: str) -> Optional[DisasterRes
            .set(
                {"role": role, "joined_at": firestore.SERVER_TIMESTAMP},
                merge=True
-           )
+    )
 
     # 2) also array-union the UID into the root `participants` field
     doc_ref.update({
@@ -137,19 +137,61 @@ def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
 
 # --- Functions for Volunteers Retrieval ---
 
+# def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
+#     """
+#     Return full participant records for volunteers (role='volunteer') in a disaster,
+#     each with a non-null 'display_name' (falling back to UID).
+#     - Returns None if the disaster does not exist.
+#     """
+#     # 1) Check disaster exists
+#     doc_ref = db.collection("disasters").document(disaster_id)
+#     if not doc_ref.get().exists:
+#         return None
+
+#     volunteers: List[dict] = []
+#     # 2) Fetch all participants with role='volunteer'
+#     for part_snap in (
+#         doc_ref.collection("participants")
+#                .where("role", "==", "volunteer")
+#                .stream()
+#     ):
+#         uid = part_snap.id
+#         pdata = part_snap.to_dict() or {}
+
+#         # 3) Lookup the user document for display_name
+#         user_snap = db.collection("users").document(uid).get()
+#         if user_snap.exists:
+#             # get() returns None if the field is missing or null
+#             display_name = user_snap.get("display_name") or uid
+#         else:
+#             display_name = uid
+
+#         # 4) Build your record
+#         volunteers.append({
+#             "uid": uid,
+#             "display_name": display_name,
+#             **pdata
+#         })
+
+#     return volunteers
+
+
 def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     """
     Return full participant records for volunteers (role='volunteer') in a disaster,
     each with a non-null 'display_name' (falling back to UID).
     - Returns None if the disaster does not exist.
     """
-    # 1) Check disaster exists
+    print(f"[DEBUG] Checking if disaster '{disaster_id}' exists.")
     doc_ref = db.collection("disasters").document(disaster_id)
     if not doc_ref.get().exists:
+        print(f"[DEBUG] Disaster '{disaster_id}' does not exist.")
         return None
 
     volunteers: List[dict] = []
-    # 2) Fetch all participants with role='volunteer'
+    print(
+        f"[DEBUG] Fetching participants with role='volunteer' for disaster '{disaster_id}'.")
+
     for part_snap in (
         doc_ref.collection("participants")
                .where("role", "==", "volunteer")
@@ -157,22 +199,37 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     ):
         uid = part_snap.id
         pdata = part_snap.to_dict() or {}
+        print(f"[DEBUG] Processing participant UID: {uid}")
 
-        # 3) Lookup the user document for display_name
         user_snap = db.collection("users").document(uid).get()
         if user_snap.exists:
-            # get() returns None if the field is missing or null
             display_name = user_snap.get("display_name") or uid
+            location = user_snap.get("location")
+            print(
+                f"************location of {uid} is {location} **************")
+            if location:
+                location_lat = location.get('lat')
+                location_lng = location.get('lng')
+
+            print(
+                f"[DEBUG] Found user document for UID: {uid}, display_name: {display_name}")
         else:
             display_name = uid
+            print(
+                f"[DEBUG] No user document found for UID: {uid}. Using UID as display_name.")
 
-        # 4) Build your record
         volunteers.append({
             "uid": uid,
             "display_name": display_name,
+            "location_lat": location_lat,
+            "location_lng": location_lng,
             **pdata
         })
+        print(
+            f"[DEBUG] Volunteer record added: UID: {uid}, Display Name: {display_name}")
 
+    print(f"[DEBUG] Total volunteers found: {len(volunteers)}")
+    print(f"[DEBUG] Volunteers found: {volunteers}")
     return volunteers
 
 
@@ -188,7 +245,7 @@ def get_all_volunteer_ids_by_disaster(disaster_id: str) -> Optional[List[str]]:
 
     # Query volunteer participant IDs from sub-collection
     volunteer_docs = doc_ref.collection("participants") \
-                          .where("role", "==", "volunteer") \
-                          .stream()
+        .where("role", "==", "volunteer") \
+        .stream()
     volunteer_ids = [v.id for v in volunteer_docs]
     return volunteer_ids

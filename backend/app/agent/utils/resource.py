@@ -30,6 +30,7 @@ def get_resources_by_ids_and_type(
 ) -> List[AgentResource]:
     # call into Firestore-backed CRUD
     backend_resources = fetch_resources(donor_ids, resource_type)
+    print(f'[DEBUG] app/agent/utils/resource fetched backend resources {backend_resources}')
 
     agent_resources: List[AgentResource] = []
     for br in backend_resources:
