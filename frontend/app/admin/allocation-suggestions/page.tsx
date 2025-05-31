@@ -422,7 +422,7 @@ export default function AdminTaskAllocationsPage() {
                                 <TableCell className="py-3 px-2">
                                   {ra.resource.status}
                                 </TableCell>
-                                <TableCell className="py-3 px-2">
+                                <TableCell className="py-3 px-2 flex items-center">
                                   <Badge
                                     variant={
                                       ra.accepted === "pending"
@@ -434,6 +434,12 @@ export default function AdminTaskAllocationsPage() {
                                   >
                                     {ra.accepted}
                                   </Badge>
+                                  <Button
+                                    size="sm"
+                                    className="ml-2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                  >
+                                    Authorize
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             ))
@@ -484,7 +490,7 @@ export default function AdminTaskAllocationsPage() {
                                 <TableCell className="py-3 px-2 whitespace-normal">
                                   {ta.task.description}
                                 </TableCell>
-                                <TableCell className="py-3 px-2">
+                                <TableCell className="py-3 px-2 flex items-center">
                                   <Badge
                                     variant={
                                       va.accepted === "pending"
@@ -496,6 +502,12 @@ export default function AdminTaskAllocationsPage() {
                                   >
                                     {va.accepted}
                                   </Badge>
+                                  <Button
+                                    size="sm"
+                                    className="ml-2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
+                                  >
+                                    Authorize
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             ))
