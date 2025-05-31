@@ -178,19 +178,20 @@ export default function CommunicationPage({
     setIsBotTyping(true)
 
     try {
-      const response = await callApi<{ message: string }>(
+      const response = await callApi<{ message?: string; response?: string }>(
         "chatbot/ask",
         "POST",
         body
       )
-      
       console.log("Bot response:", response)
-      
+      // Prioritize `response` field, fall back to `message`
+      const botText = response.response || response.message || ""
+
       const botNow = Date.now()
       const botMsg: Message = {
         id: `bot-${botNow}`,
         sender_id: "ai-assistant",
-        text: response.message,
+        text: botText,
         created_at: {
           seconds: Math.floor(botNow / 1000),
           nanoseconds: 0,
@@ -387,7 +388,7 @@ export default function CommunicationPage({
                                       isMe
                                         ? "bg-green-500 text-white"
                                         : isAI
-                                        ? "bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800"
+                                        ? "bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 whitespace-pre-wrap"
                                         : "bg-slate-100 dark:bg-slate-800"
                                     }`}
                                   >
