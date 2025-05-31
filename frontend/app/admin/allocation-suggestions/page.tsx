@@ -85,6 +85,11 @@ export default function AdminTaskAllocationsPage() {
     "resources"
   )
 
+  // State to store fetched donor display names
+  const [donorNames, setDonorNames] = useState<Record<string, string>>({})
+  // State to store fetched volunteer display names
+  const [volunteerNames, setVolunteerNames] = useState<Record<string, string>>({})
+
   // Hydrate from localStorage
   useEffect(() => {
     try {
@@ -139,6 +144,53 @@ export default function AdminTaskAllocationsPage() {
   }, [selectedDisaster])
 
   const current = cache[selectedDisaster]
+
+  // Fetch display names for all donor and volunteer IDs when `current` updates
+  useEffect(() => {
+    if (!current) return
+
+    // Collect unique donor IDs from resource_allocations
+    const donorIds = Array.from(
+      new Set(
+        current.task_allocations.flatMap((ta) =>
+          ta.resource_allocations.map((ra) => ra.resource.donor_id)
+        )
+      )
+    )
+    donorIds.forEach((id) => {
+      if (!donorNames[id]) {
+        callApi<{ display_name: string }>(`users/${id}/display_name`, "GET")
+          .then((res) => {
+            setDonorNames((prev) => ({ ...prev, [id]: res.display_name }))
+          })
+          .catch(() => {
+            // If fetching fails, leave fallback as ID
+          })
+      }
+    })
+
+    // Collect unique volunteer IDs from volunteer_allocations
+    const volunteerIds = Array.from(
+      new Set(
+        current.task_allocations.flatMap((ta) =>
+          ta.volunteer_allocations.map((va) => va.volunteer.id)
+        )
+      )
+    )
+    volunteerIds.forEach((id) => {
+      if (!volunteerNames[id]) {
+        callApi<{ display_name: string }>(`users/${id}/display_name`, "GET")
+          .then((res) => {
+            setVolunteerNames((prev) => ({ ...prev, [id]: res.display_name }))
+          })
+          .catch(() => {
+            // If fetching fails, leave fallback as ID
+          })
+      }
+    })
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current])
 
   return (
     <div className="fixed inset-0 py-6 md:left-64 md:right-0 overflow-auto px-6 md:px-8 bg-gray-50 dark:bg-gray-900">
@@ -391,7 +443,7 @@ export default function AdminTaskAllocationsPage() {
                             <TableHead>Resource Type</TableHead>
                             <TableHead>Quantity</TableHead>
                             <TableHead>Assigned Task</TableHead>
-                            <TableHead>Donor ID</TableHead>
+                            <TableHead>Donor</TableHead>
                             <TableHead>Donor Type</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Accepted</TableHead>
@@ -414,7 +466,8 @@ export default function AdminTaskAllocationsPage() {
                                   {ta.task.description}
                                 </TableCell>
                                 <TableCell className="py-3 px-2">
-                                  {ra.resource.donor_id}
+                                  {donorNames[ra.resource.donor_id] ||
+                                    ra.resource.donor_id}
                                 </TableCell>
                                 <TableCell className="py-3 px-2">
                                   {ra.resource.donor_type}
@@ -463,7 +516,7 @@ export default function AdminTaskAllocationsPage() {
                       <Table className="w-full table-auto text-gray-700 dark:text-gray-300">
                         <TableHeader className="bg-gray-50 dark:bg-gray-800">
                           <TableRow className="font-semibold">
-                            <TableHead>Volunteer ID</TableHead>
+                            <TableHead>Volunteer</TableHead>
                             <TableHead>Location (Lat, Lng)</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Assigned Task</TableHead>
@@ -478,7 +531,8 @@ export default function AdminTaskAllocationsPage() {
                                 className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                               >
                                 <TableCell className="py-3 px-2">
-                                  {va.volunteer.id}
+                                  {volunteerNames[va.volunteer.id] ||
+                                    va.volunteer.id}
                                 </TableCell>
                                 <TableCell className="py-3 px-2">
                                   {va.volunteer.location.lat.toFixed(4)},{" "}
