@@ -167,9 +167,8 @@ To set up and run the RAG server:
 # AI Workflow Explanation
 
 ResQConnect’s AI workflow is organized into a multi‐agent pipeline, where each agent focuses on a specific responsibility. Below is a step‐by‐step summary of how user input becomes a prioritized, actionable task:
-<!--
-![AI Agent Architecture](architecture.png)
--->
+
+![AI Agent Architecture](AI agent architecture.png)
 
 1. **Intake Agent**  
    - **Input Sources:** Receives help requests via text, image, or voice.  
@@ -230,12 +229,9 @@ All AI suggestions—whether a “new disaster” recommendation, task creation,
 ## Assumptions Made
 
 1. **Reliable Internet Connectivity:** Affected individuals and volunteers have intermittent Internet access, but the PWA is designed to cache critical data for offline use.  
-2. **Admin Availability for Approvals:** It is assumed that a government coordinator or platform admin is available to review and approve AI-driven suggestions in a timely manner.  
-3. **Standardized Data Formats:** All incoming requests conform to predefined JSON schemas (with fields for location, media URLs, requestor ID) to streamline parsing.  
-4. **Geolocation Accuracy:** Device‐provided latitude/longitude is sufficiently accurate (±50 meters) for matching requests to existing disasters.  
-5. **Single Active Disaster per Geographic Cluster:** Geographic clustering logic assumes that requests within a small radius (e.g., 5 km) belong to the same disaster event.  
-6. **Adequate Compute Resources for LLM Inference:** The 9B-parameter Gemma2 model is hosted on dedicated GPU‐enabled MCP servers to maintain sub-second response times.  
-7. **Pre‐Signed URL Permissions:** Image and video uploads depend on correct Firebase Storage rules—pre-signed URLs must expire after a configured time window (e.g., 24 hours).  
-8. **Disaster Document Availability:** Up-to-date situation reports, SOPs, and volunteer observations are regularly ingested via the Data Collection Agent to keep the FAISS index accurate.  
-9. **Volunteer Skill Metadata:** Volunteer profiles include skill tags (e.g., “medical,” “logistics”), so the Allocation Agent can match tasks based on required capabilities.  
-10. **Guardrail Coverage:** Ethics and domain-relevance checks are enforced via a predefined list of prohibited content patterns and disaster‐specific keywords.  
+2. **Admin Availability for Approvals:** It is assumed that a government coordinator or platform admin is available to review and approve AI-driven suggestions in a timely manner.   
+3. **Geolocation Accuracy:** Device‐provided latitude/longitude is sufficiently accurate (±50 meters) for matching requests to existing disasters.  
+4. **Single Active Disaster per Geographic Cluster:** Geographic clustering logic assumes that requests within a small radius (e.g., 5 km) belong to the same disaster event.   
+5. **Pre‐Signed URL Permissions:** Image and video uploads depend on correct Firebase Storage rules—pre-signed URLs must expire after a configured time window (e.g., 24 hours).  
+6. **Disaster Document Availability:** Up-to-date situation reports, SOPs, and volunteer observations are regularly ingested via the Data Collection Agent to keep the FAISS index accurate.
+7. **Guardrail Coverage:** Ethics and domain-relevance checks are enforced via a predefined list of prohibited content patterns and disaster‐specific keywords.  
