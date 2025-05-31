@@ -39,7 +39,11 @@
         ```bash
         source env/bin/activate
         ```
-
+  **OPTIONAL**
+    -   You can start all the services required for the backend (celerty worker, MCP servers and FAST API) try running the following script if it fails follow the given steps :
+        ```bash
+         .\setup_backend.ps1
+        ```
 5.  **Install Dependencies**
     -   Install the required Python packages by running:
         ```bash
