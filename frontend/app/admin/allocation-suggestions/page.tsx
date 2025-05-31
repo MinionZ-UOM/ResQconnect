@@ -130,19 +130,19 @@ export default function AdminTaskAllocationsPage() {
   const current = cache[selectedDisaster]
 
   return (
-    <div className="fixed inset-0 py-4 md:left-64 md:right-0 overflow-auto px-6 md:px-8 bg-gray-50 dark:bg-gray-900">
+    <div className="fixed inset-0 py-6 md:left-64 md:right-0 overflow-auto px-6 md:px-8 bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="mb-8 flex flex-col md:flex-row md:justify-between items-start gap-4">
+      <header className="mb-8 pb-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+          <h1 className="text-4xl font-extrabold text-gray-800 dark:text-gray-100">
             AI-Driven Resource Allocation
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Generate and review resource & volunteer assignments per disaster
           </p>
         </div>
         <Button
-          className="bg-gray-700 hover:bg-gray-800 text-white"
+          className="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white px-4 py-2 rounded-lg shadow-md transition"
           onClick={fetchSuggestions}
           disabled={!selectedDisaster || loading}
         >
@@ -151,18 +151,18 @@ export default function AdminTaskAllocationsPage() {
       </header>
 
       {/* Disaster selector */}
-      <Card className="mb-6 border-gray-200 dark:border-gray-700">
-        <CardHeader className="bg-gray-100 dark:bg-gray-800">
+      <Card className="mb-6 border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+        <CardHeader className="bg-gray-100 dark:bg-gray-700 rounded-t-xl">
           <CardTitle className="text-gray-800 dark:text-gray-200">
             Select Disaster
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <Select
             value={selectedDisaster}
             onValueChange={setSelectedDisaster}
           >
-            <SelectTrigger className="w-72 border-gray-300 dark:border-gray-600">
+            <SelectTrigger className="w-full max-w-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-500">
               <SelectValue placeholder="Choose a disaster…" />
             </SelectTrigger>
             <SelectContent>
@@ -193,78 +193,69 @@ export default function AdminTaskAllocationsPage() {
       {/* All fetched data */}
       {current && (
         <>
-          {/* Previous & Next Actions */}
-          {/* <Card className="mb-6 border-gray-200 dark:border-gray-700">
-            <CardHeader className="bg-gray-100 dark:bg-gray-800">
-              <CardTitle className="text-gray-800 dark:text-gray-200">
-                Workflow Info
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Previous Action:</strong> {current.previous_action}
-              </p>
-              <p className="text-gray-700 dark:text-gray-300 mt-1">
-                <strong>Next Action:</strong> {current.next_action}
-              </p>
-            </CardContent>
-          </Card> */}
-
           {/* Disaster summary & metadata */}
-          <Card className="mb-6 border-gray-200 dark:border-gray-700">
-            <CardHeader className="bg-gray-100 dark:bg-gray-800">
+          <Card className="mb-6 border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+            <CardHeader className="bg-gray-100 dark:bg-gray-700 rounded-t-xl">
               <CardTitle className="text-gray-800 dark:text-gray-200">
                 Disaster Details
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <CardDescription className="text-gray-700 dark:text-gray-300">
                 {current.disaster.disaster_summary}
               </CardDescription>
-              <ul className="mt-4 space-y-1 text-gray-700 dark:text-gray-300">
-                <li>
-                  <strong>ID:</strong> {current.disaster.disaster_id}
+              <ul className="mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                <li className="flex items-center">
+                  <span className="font-semibold w-24">ID:</span>
+                  <span>{current.disaster.disaster_id}</span>
                 </li>
-                <li>
-                  <strong>Type:</strong> {current.disaster.disaster_type || "N/A"}
+                <li className="flex items-center">
+                  <span className="font-semibold w-24">Type:</span>
+                  <span>{current.disaster.disaster_type || "N/A"}</span>
                 </li>
-                <li>
-                  <strong>Coordinates:</strong>{" "}
-                  {current.disaster.disaster_coordinates.lat.toFixed(4)},{" "}
-                  {current.disaster.disaster_coordinates.lng.toFixed(4)}
+                <li className="flex items-center">
+                  <span className="font-semibold w-24">Coordinates:</span>
+                  <span>
+                    {current.disaster.disaster_coordinates.lat.toFixed(4)},{" "}
+                    {current.disaster.disaster_coordinates.lng.toFixed(4)}
+                  </span>
                 </li>
-                <li>
-                  <strong>Location:</strong>{" "}
-                  {current.disaster.disaster_location || "Unknown"}
+                <li className="flex items-center">
+                  <span className="font-semibold w-24">Location:</span>
+                  <span>{current.disaster.disaster_location || "Unknown"}</span>
                 </li>
               </ul>
             </CardContent>
           </Card>
 
           {/* Task requirements */}
-          <Card className="mb-6 border-gray-200 dark:border-gray-700">
-            <CardHeader className="bg-gray-100 dark:bg-gray-800">
+          <Card className="mb-6 border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+            <CardHeader className="bg-gray-100 dark:bg-gray-700 rounded-t-xl">
               <CardTitle className="text-gray-800 dark:text-gray-200">
                 Task Resource Needs
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ul className="list-disc pl-6 space-y-2 text-gray-700 dark:text-gray-300">
+            <CardContent className="p-6">
+              <ul className="list-disc pl-6 space-y-3 text-gray-700 dark:text-gray-300">
                 {current.tasks.map((t, i) => (
-                  <li key={i}>
-                    <strong className="uppercase text-xs text-gray-600 dark:text-gray-400">
-                      [{t.urgency}]
-                    </strong>{" "}
-                    {t.description} —{" "}
-                    <span className="font-medium">
-                      {t.manpower_requirement} people
-                    </span>
-                    ; Resources:{" "}
-                    <span className="italic">
-                      {t.resource_requirements
-                        .map((r) => `${r.quantity}× ${r.resource_type}`)
-                        .join(", ")}
-                    </span>
+                  <li key={i} className="flex flex-col gap-1">
+                    <div>
+                      <span className="uppercase text-xs font-semibold text-gray-600 dark:text-gray-400 mr-2">
+                        [{t.urgency}]
+                      </span>
+                      <span>{t.description}</span>
+                    </div>
+                    <div className="ml-6 text-sm">
+                      <span className="font-medium">
+                        {t.manpower_requirement} people
+                      </span>
+                      <span className="ml-4 italic">
+                        Resources:{" "}
+                        {t.resource_requirements
+                          .map((r) => `${r.quantity}× ${r.resource_type}`)
+                          .join(", ")}
+                      </span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -272,21 +263,21 @@ export default function AdminTaskAllocationsPage() {
           </Card>
 
           {/* Resource allocations */}
-          <Card className="mb-6 border-gray-200 dark:border-gray-700">
-            <CardHeader className="bg-gray-100 dark:bg-gray-800">
+          <Card className="mb-6 border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+            <CardHeader className="bg-gray-100 dark:bg-gray-700 rounded-t-xl">
               <CardTitle className="text-gray-800 dark:text-gray-200">
                 AI-Recommended Resource Allocations
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {current.task_allocations.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400">
                   No resource allocations proposed.
                 </p>
               ) : (
-                <Table className="text-gray-700 dark:text-gray-300">
-                  <TableHeader>
-                    <TableRow>
+                <Table className="w-full table-auto text-gray-700 dark:text-gray-300">
+                  <TableHeader className="bg-gray-50 dark:bg-gray-800">
+                    <TableRow className="font-semibold">
                       <TableHead>Resource Type</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Assigned Task</TableHead>
@@ -296,22 +287,32 @@ export default function AdminTaskAllocationsPage() {
                       <TableHead>Accepted</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {current.task_allocations.flatMap((ta, ti) =>
                       ta.resource_allocations.map((ra, ri) => (
                         <TableRow
                           key={`res-${ti}-${ri}`}
-                          className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                          className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                         >
-                          <TableCell>{ra.resource.resource_type}</TableCell>
-                          <TableCell>{ra.resource.quantity}</TableCell>
-                          <TableCell className="whitespace-normal">
+                          <TableCell className="py-3 px-2">
+                            {ra.resource.resource_type}
+                          </TableCell>
+                          <TableCell className="py-3 px-2">
+                            {ra.resource.quantity}
+                          </TableCell>
+                          <TableCell className="py-3 px-2 whitespace-normal">
                             {ta.task.description}
                           </TableCell>
-                          <TableCell>{ra.resource.donor_id}</TableCell>
-                          <TableCell>{ra.resource.donor_type}</TableCell>
-                          <TableCell>{ra.resource.status}</TableCell>
-                          <TableCell>
+                          <TableCell className="py-3 px-2">
+                            {ra.resource.donor_id}
+                          </TableCell>
+                          <TableCell className="py-3 px-2">
+                            {ra.resource.donor_type}
+                          </TableCell>
+                          <TableCell className="py-3 px-2">
+                            {ra.resource.status}
+                          </TableCell>
+                          <TableCell className="py-3 px-2">
                             <Badge
                               variant={
                                 ra.accepted === "pending"
@@ -334,13 +335,13 @@ export default function AdminTaskAllocationsPage() {
           </Card>
 
           {/* Volunteer allocations */}
-          <Card className="border-gray-200 dark:border-gray-700">
-            <CardHeader className="bg-gray-100 dark:bg-gray-800">
+          <Card className="border-0 shadow-lg rounded-xl bg-white dark:bg-gray-800">
+            <CardHeader className="bg-gray-100 dark:bg-gray-700 rounded-t-xl">
               <CardTitle className="text-gray-800 dark:text-gray-200">
                 AI-Recommended Volunteer Allocations
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {current.task_allocations.every(
                 (ta) => ta.volunteer_allocations.length === 0
               ) ? (
@@ -348,9 +349,9 @@ export default function AdminTaskAllocationsPage() {
                   No volunteer allocations proposed.
                 </p>
               ) : (
-                <Table className="text-gray-700 dark:text-gray-300">
-                  <TableHeader>
-                    <TableRow>
+                <Table className="w-full table-auto text-gray-700 dark:text-gray-300">
+                  <TableHeader className="bg-gray-50 dark:bg-gray-800">
+                    <TableRow className="font-semibold">
                       <TableHead>Volunteer ID</TableHead>
                       <TableHead>Location (Lat, Lng)</TableHead>
                       <TableHead>Status</TableHead>
@@ -358,23 +359,27 @@ export default function AdminTaskAllocationsPage() {
                       <TableHead>Accepted</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {current.task_allocations.flatMap((ta, ti) =>
                       ta.volunteer_allocations.map((va, vi) => (
                         <TableRow
                           key={`vol-${ti}-${vi}`}
-                          className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                          className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                         >
-                          <TableCell>{va.volunteer.id}</TableCell>
-                          <TableCell>
+                          <TableCell className="py-3 px-2">
+                            {va.volunteer.id}
+                          </TableCell>
+                          <TableCell className="py-3 px-2">
                             {va.volunteer.location.lat.toFixed(4)},{" "}
                             {va.volunteer.location.lng.toFixed(4)}
                           </TableCell>
-                          <TableCell>{va.volunteer.status}</TableCell>
-                          <TableCell className="whitespace-normal">
+                          <TableCell className="py-3 px-2">
+                            {va.volunteer.status}
+                          </TableCell>
+                          <TableCell className="py-3 px-2 whitespace-normal">
                             {ta.task.description}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3 px-2">
                             <Badge
                               variant={
                                 va.accepted === "pending"
