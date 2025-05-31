@@ -39,20 +39,21 @@
         ```bash
         source env/bin/activate
         ```
-  **OPTIONAL**
+5.  **OPTIONAL**
     -   You can start all the services required for the backend (celerty worker, MCP servers and FAST API) try running the following script if it fails follow the given steps :
         ```bash
          .\setup_backend.ps1
         ```
-5.  **Install Dependencies**
+
+6.  **Install Dependencies**
     -   Install the required Python packages by running:
         ```bash
         pip install -r requirements.txt
         ```
-6.  **Create a folder named `secrets` inside the `app` folder and place the `firebase_cred.json` file inside it.**
+7.  **Create a folder named `secrets` inside the `app` folder and place the `firebase_cred.json` file inside it.**
     -   This is required to access Firestore from the backend.
 
-7.  **Run the Application**
+8.  **Run the Application**
     -   Start the backend server with hot-reloading enabled:
         ```bash
         python -m uvicorn app.main:app --reload
