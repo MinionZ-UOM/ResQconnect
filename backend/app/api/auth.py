@@ -80,3 +80,14 @@ async def get_my_availability(
         )
     # Assuming `current_user` has an `availability: bool` field
     return AvailabilityUpdate(availability=current_user.availability)
+
+
+@router.get("/{uid}/display_name")
+async def get_display_name(uid: str):
+    user = get_user(uid)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return {"display_name": user.display_name}
