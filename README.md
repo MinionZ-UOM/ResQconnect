@@ -161,3 +161,81 @@ To set up and run the RAG server:
     NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id_here
     NEXT_PUBLIC_API=http://localhost:8000
     ```
+
+---
+
+# AI Workflow Explanation
+
+ResQConnect’s AI workflow is organized into a multi‐agent pipeline, where each agent focuses on a specific responsibility. Below is a step‐by‐step summary of how user input becomes a prioritized, actionable task:
+<!--
+![AI Agent Architecture](architecture.png)
+-->
+
+1. **Intake Agent**  
+   - **Input Sources:** Receives help requests via text, image, or voice.  
+   - **Processing Steps:**  
+     1. Auto‐geotags incoming requests using latitude/longitude and reverse geocoding.  
+     2. Extracts metadata (type of need, urgency indicators, affected individual count) via lightweight NLP and computer vision.  
+   - **Output:** Publishes a “new request” event (containing enriched metadata and media URLs) into Redis for downstream consumption.
+
+2. **Disaster Agent**  
+   - **Input:** Listens for “new request” events.  
+   - **Processing Steps:**  
+     1. Compares request location against existing disaster records (using simple geographic clustering).  
+     2. If the location matches an active disaster, tags the request with that Disaster ID; otherwise, suggests a “new disaster” creation for admin approval.  
+   - **Output:** Emits either a “matched request” event (for existing disasters) or a “disaster suggestion” event to the Admin Interface.
+
+3. **Data Collection Agent (External Updates)**  
+   - **Input:** Scheduled cron job pulls external news briefs, situation reports, or SOP documents via a configured News API.  
+   - **Processing Steps:**  
+     1. Preprocesses fetched documents by cleaning and standardizing text.  
+     2. Updates the FAISS index (hosted on the RAG MCP Server) with new embeddings so that RAG results remain current.  
+   - **Output:** Triggers no direct UI change but ensures the FAISS vector store stays up to date for the Task Agent.
+
+4. **Task Agent (RAG Pipeline)**  
+   - **Input:** Receives “matched request” events (including user metadata and Disaster ID).  
+   - **Processing Steps:**  
+     1. Queries the FAISS index for disaster‐specific documents (situation reports, SOPs, volunteer observation embeddings).  
+     2. Uses a 9B‐parameter LLM (Gemma2) to generate step‐by‐step instructions and assigns an “intelligent urgency” score.  
+     3. Summarizes any lengthy context (e.g., volunteer observations or past chat history) to reduce token usage while retaining critical details.  
+   - **Output:** Persists a recommended Task object in Firestore (with urgency and resource requirements) and emits a “new task” event.
+
+5. **Chatbot & Communication Hub**  
+   - **Input:** Subscribes to “chat‐message” events from users (Affected Individuals, Volunteers, First Responders).  
+   - **Processing Steps:**  
+     1. Maintains full conversation history in memory; when message length approaches token limits, uses Gemma2 to summarize older messages.  
+     2. Has read‐only access to Firestore to fetch relevant disaster context and SOPs for more accurate responses.  
+     3. Validates each message for guardrail compliance (no hate speech, no disallowed content).  
+   - **Output:** Responds with context‐aware, RAG‐augmented replies and logs all interactions (including user feedback) to Langfuse for observability and continuous improvement.
+
+6. **Allocation Agent**  
+   - **Input:** Triggered by “task approved” events after an admin reviews and confirms the Task Agent’s recommendation.  
+   - **Processing Steps:**  
+     1. Queries Firestore for available volunteers (filtered by skill, schedule, and Disaster ID) and resource inventory.  
+     2. Runs a proximity‐aware, token‐efficient optimization algorithm to assign volunteers and resources to the approved task.  
+     3. If any volunteer or resource availability changes (tracked via Firestore triggers), re‐enqueues unfulfilled tasks for reallocation.  
+   - **Output:** Writes final allocation records to Firestore and emits an “allocation completed” event.
+
+7. **Orchestrator Agent**  
+   - **Input:** Subscribes to all lifecycle events (new request, matched request, new task, allocation completed).  
+   - **Processing Steps:**  
+     1. Routes callbacks and status updates back to the API Gateway so that clients (web/mobile) receive real‐time WebSocket notifications or FCM push messages.  
+     2. Aggregates metrics (queue length, task processing time, LLM token usage) and streams them to Prometheus/Loki and Langfuse.  
+     3. Monitors overall health of Celery workers and triggers AgentOps to restart any failed or stalled processes automatically.  
+   - **Output:** Ensures end-to-end coordination, client notifications, and continuous observability.
+
+All AI suggestions—whether a “new disaster” recommendation, task creation, or resource allocation—enter a human-in-the-loop approval step via the Admin Interface before being finalized in Firestore. Guardrail filters run across every agent to check for disallowed content (ethics, domain relevance), ensuring safe, reliable operations.
+
+
+## Assumptions Made
+
+1. **Reliable Internet Connectivity:** Affected individuals and volunteers have intermittent Internet access, but the PWA is designed to cache critical data for offline use.  
+2. **Admin Availability for Approvals:** It is assumed that a government coordinator or platform admin is available to review and approve AI-driven suggestions in a timely manner.  
+3. **Standardized Data Formats:** All incoming requests conform to predefined JSON schemas (with fields for location, media URLs, requestor ID) to streamline parsing.  
+4. **Geolocation Accuracy:** Device‐provided latitude/longitude is sufficiently accurate (±50 meters) for matching requests to existing disasters.  
+5. **Single Active Disaster per Geographic Cluster:** Geographic clustering logic assumes that requests within a small radius (e.g., 5 km) belong to the same disaster event.  
+6. **Adequate Compute Resources for LLM Inference:** The 9B-parameter Gemma2 model is hosted on dedicated GPU‐enabled MCP servers to maintain sub-second response times.  
+7. **Pre‐Signed URL Permissions:** Image and video uploads depend on correct Firebase Storage rules—pre-signed URLs must expire after a configured time window (e.g., 24 hours).  
+8. **Disaster Document Availability:** Up-to-date situation reports, SOPs, and volunteer observations are regularly ingested via the Data Collection Agent to keep the FAISS index accurate.  
+9. **Volunteer Skill Metadata:** Volunteer profiles include skill tags (e.g., “medical,” “logistics”), so the Allocation Agent can match tasks based on required capabilities.  
+10. **Guardrail Coverage:** Ethics and domain-relevance checks are enforced via a predefined list of prohibited content patterns and disaster‐specific keywords.  
