@@ -168,7 +168,7 @@ To set up and run the RAG server:
 
 ResQConnect’s AI workflow is organized into a multi‐agent pipeline, where each agent focuses on a specific responsibility. Below is a step‐by‐step summary of how user input becomes a prioritized, actionable task:
 
-![AI Agent Architecture](AI agent architecture.png)
+![AI Agent Architecture](ai-agent-architecture.png)
 
 1. **Intake Agent**  
    - **Input Sources:** Receives help requests via text, image, or voice.  
@@ -223,7 +223,7 @@ ResQConnect’s AI workflow is organized into a multi‐agent pipeline, where ea
      3. Monitors overall health of Celery workers and triggers AgentOps to restart any failed or stalled processes automatically.  
    - **Output:** Ensures end-to-end coordination, client notifications, and continuous observability.
 
-All AI suggestions—whether a “new disaster” recommendation, task creation, or resource allocation—enter a human-in-the-loop approval step via the Admin Interface before being finalized in Firestore. Guardrail filters run across every agent to check for disallowed content (ethics, domain relevance), ensuring safe, reliable operations.
+All AI suggestions whether a “new disaster” recommendation, task creation, or resource allocation, enter a human-in-the-loop approval step via the Admin Interface before being finalized in Firestore. Guardrail filters run across every agent to check for disallowed content (ethics, domain relevance), ensuring safe, reliable operations.
 
 
 ## Assumptions Made
