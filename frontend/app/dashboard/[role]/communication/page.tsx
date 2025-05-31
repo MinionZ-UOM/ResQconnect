@@ -36,6 +36,7 @@ interface Message {
   sender_id: string
   text: string
   created_at: { seconds: number; nanoseconds: number }
+  trace_id?: string
 }
 
 export default function CommunicationPage({
@@ -52,6 +53,7 @@ export default function CommunicationPage({
   const [text, setText] = useState("")
   const [userCache, setUserCache] = useState<Record<string, string>>({})
   const [isBotTyping, setIsBotTyping] = useState(false)
+  const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set()) // ← NEW: tracks which trace_ids have been scored
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -178,14 +180,15 @@ export default function CommunicationPage({
     setIsBotTyping(true)
 
     try {
-      const response = await callApi<{ message?: string; response?: string }>(
-        "chatbot/ask",
-        "POST",
-        body
-      )
-      console.log("Bot response:", response)
+      const res = await callApi<{
+        message?: string
+        response?: string
+        trace?: string
+      }>("chatbot/ask", "POST", body)
+      console.log("Bot response:", res)
       // Prioritize `response` field, fall back to `message`
-      const botText = response.response || response.message || ""
+      const botText = res.response || res.message || ""
+      const traceId = res.trace || ""
 
       const botNow = Date.now()
       const botMsg: Message = {
@@ -196,6 +199,7 @@ export default function CommunicationPage({
           seconds: Math.floor(botNow / 1000),
           nanoseconds: 0,
         },
+        trace_id: traceId, // ← NEW: save trace ID on the message
       }
       setMessages((prev) => [...prev, botMsg])
       setIsBotTyping(false)
@@ -222,6 +226,20 @@ export default function CommunicationPage({
       sendToBot()
     } else {
       sendToChat()
+    }
+  }
+
+  // ← UPDATED: after scoring, we add the trace ID to scoredTraceIds
+  const handleScore = async (traceId: string, value: number) => {
+    if (!traceId) return
+    try {
+      await callApi("chatbot/score", "POST", {
+        trace_id: traceId,
+        value,
+      })
+      setScoredTraceIds((prev) => new Set(prev).add(traceId))
+    } catch (e) {
+      console.error("Error sending score:", e)
     }
   }
 
@@ -394,6 +412,33 @@ export default function CommunicationPage({
                                   >
                                     {m.text}
                                   </div>
+
+                                  {isAI && m.trace_id && (
+                                    <div
+                                      className={`flex gap-2 mt-1 overflow-hidden transition-all duration-300 ${
+                                        scoredTraceIds.has(m.trace_id)
+                                          ? "opacity-0 max-h-0"
+                                          : "opacity-100 max-h-10"
+                                      }`}
+                                    >
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleScore(m.trace_id || "", 1)
+                                        }
+                                      >
+                                        Like
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleScore(m.trace_id || "", -1)
+                                        }
+                                      >
+                                        Dislike
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -522,7 +567,7 @@ export default function CommunicationPage({
                         }}
                         className="min-h-10 flex-1"
                       />
-                      <Button onClick={handleSend} disabled={!text.trim()||!firebaseUser}>
+                      <Button onClick={handleSend} disabled={!text.trim() || !firebaseUser}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
