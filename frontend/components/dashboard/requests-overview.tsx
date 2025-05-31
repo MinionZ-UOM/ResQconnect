@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Bar } from "react-chartjs-2"
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js"
 import type { RequestType } from "@/lib/types"
@@ -13,9 +12,6 @@ interface RequestsOverviewProps {
 }
 
 export function RequestsOverview({ role }: RequestsOverviewProps) {
-  // Mock data - in a real app, this would come from an API
-  const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("day")
-
   const requestTypes: RequestType[] = ["Medical", "Food", "Shelter", "Evacuation", "Rescue", "Other"]
 
   // Generate random data based on request types
@@ -60,39 +56,8 @@ export function RequestsOverview({ role }: RequestsOverviewProps) {
   }
 
   return (
-    <div>
-      <div className="flex justify-end mb-4">
-        <div className="flex space-x-1 rounded-md bg-slate-100 dark:bg-slate-800 p-1">
-          <button
-            onClick={() => setTimeframe("day")}
-            className={`px-3 py-1.5 text-sm rounded-md ${
-              timeframe === "day" ? "bg-white dark:bg-slate-700 shadow-sm" : "text-slate-600 dark:text-slate-400"
-            }`}
-          >
-            Day
-          </button>
-          <button
-            onClick={() => setTimeframe("week")}
-            className={`px-3 py-1.5 text-sm rounded-md ${
-              timeframe === "week" ? "bg-white dark:bg-slate-700 shadow-sm" : "text-slate-600 dark:text-slate-400"
-            }`}
-          >
-            Week
-          </button>
-          <button
-            onClick={() => setTimeframe("month")}
-            className={`px-3 py-1.5 text-sm rounded-md ${
-              timeframe === "month" ? "bg-white dark:bg-slate-700 shadow-sm" : "text-slate-600 dark:text-slate-400"
-            }`}
-          >
-            Month
-          </button>
-        </div>
-      </div>
-
-      <div className="h-80">
-        <Bar data={data} options={options} />
-      </div>
+    <div className="h-80">
+      <Bar data={data} options={options} />
     </div>
   )
 }
