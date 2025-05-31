@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore"
 import { onAuthStateChanged, User } from "firebase/auth"
 import { auth, db } from "@/lib/firebaseClient"
+import { callApi } from "@/lib/api"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -50,6 +51,7 @@ export default function CommunicationPage({
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState("")
   const [userCache, setUserCache] = useState<Record<string, string>>({})
+  const [isBotTyping, setIsBotTyping] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -127,8 +129,8 @@ export default function CommunicationPage({
     })
   }, [messages, userCache])
 
-  const sendMessage = async () => {
-    if (!text.trim() || !active || !firebaseUser || active.id === "resqbot") return
+  const sendToChat = async () => {
+    if (!text.trim() || !active || !firebaseUser) return
     const col = collection(
       db,
       "chatSessions",
@@ -141,6 +143,85 @@ export default function CommunicationPage({
       created_at: new Date(),
     })
     setText("")
+  }
+
+  const sendToBot = async () => {
+    if (!text.trim() || !firebaseUser) return
+
+    const now = Date.now()
+    const userMsg: Message = {
+      id: `user-${now}`,
+      sender_id: firebaseUser.uid,
+      text: text.trim(),
+      created_at: {
+        seconds: Math.floor(now / 1000),
+        nanoseconds: 0,
+      },
+    }
+    setMessages((prev) => [...prev, userMsg])
+
+    const body = {
+      user: {
+        id: firebaseUser.uid,
+        name: "Chemini",
+        role: "affected_individual",
+        location: {
+          latitude: 8.23,
+          longitude: 72.08,
+        },
+      },
+      prompt: text.trim(),
+      chat_history: [],
+    }
+
+    setText("")
+    setIsBotTyping(true)
+
+    try {
+      const response = await callApi<{ message: string }>(
+        "chatbot/ask",
+        "POST",
+        body
+      )
+      
+      console.log("Bot response:", response)
+      
+      const botNow = Date.now()
+      const botMsg: Message = {
+        id: `bot-${botNow}`,
+        sender_id: "ai-assistant",
+        text: response.message,
+        created_at: {
+          seconds: Math.floor(botNow / 1000),
+          nanoseconds: 0,
+        },
+      }
+      setMessages((prev) => [...prev, botMsg])
+      setIsBotTyping(false)
+      endRef.current?.scrollIntoView({ behavior: "smooth" })
+    } catch {
+      const errorNow = Date.now()
+      const errorMsg: Message = {
+        id: `error-${errorNow}`,
+        sender_id: "ai-assistant",
+        text: "Sorry, I couldn't reach the chatbot service.",
+        created_at: {
+          seconds: Math.floor(errorNow / 1000),
+          nanoseconds: 0,
+        },
+      }
+      setMessages((prev) => [...prev, errorMsg])
+      setIsBotTyping(false)
+      endRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  const handleSend = () => {
+    if (active?.id === "resqbot") {
+      sendToBot()
+    } else {
+      sendToChat()
+    }
   }
 
   const handleSelectResQbot = () => {
@@ -248,9 +329,113 @@ export default function CommunicationPage({
                 <CardContent className="p-0 flex flex-col h-[calc(100%-8rem)]">
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {active.id === "resqbot" ? (
-                      <div className="text-center text-slate-500 dark:text-slate-400">
-                        Get intellgent insights about disasters around your area
-                      </div>
+                      <>
+                        {messages.length === 0 && !isBotTyping && (
+                          <div className="text-center text-slate-500 dark:text-slate-400">
+                            Start a conversation with resQbot.
+                          </div>
+                        )}
+                        {messages.map((m) => {
+                          const isMe = m.sender_id === firebaseUser?.uid
+                          const isAI = m.sender_id === "ai-assistant"
+                          const name = isAI
+                            ? "resQbot"
+                            : userCache[m.sender_id] || m.sender_id.slice(-6)
+
+                          return (
+                            <div
+                              key={m.id}
+                              className={`flex ${
+                                isMe ? "justify-end" : "justify-start"
+                              }`}
+                            >
+                              <div
+                                className={`flex gap-3 max-w-[80%] ${
+                                  isMe ? "flex-row-reverse" : "flex-row"
+                                }`}
+                              >
+                                <Avatar
+                                  className={
+                                    isAI ? "bg-blue-100 text-blue-600" : ""
+                                  }
+                                >
+                                  <AvatarFallback>
+                                    {isAI ? <Bot className="h-4 w-4" /> : name.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium">
+                                      {name}
+                                    </span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                      {new Date(
+                                        m.created_at.seconds * 1000
+                                      ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                    {isAI && (
+                                      <span className="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 px-1.5 py-0.5 rounded-full">
+                                        AI
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div
+                                    className={`p-3 rounded-lg ${
+                                      isMe
+                                        ? "bg-green-500 text-white"
+                                        : isAI
+                                        ? "bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800"
+                                        : "bg-slate-100 dark:bg-slate-800"
+                                    }`}
+                                  >
+                                    {m.text}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {isBotTyping && (
+                          <div className="flex justify-start">
+                            <div className="flex gap-3 max-w-[80%] flex-row">
+                              <Avatar className="bg-blue-100 text-blue-600">
+                                <AvatarFallback>
+                                  <Bot className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium">
+                                    resQbot
+                                  </span>
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    typing...
+                                  </span>
+                                </div>
+                                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-800 flex items-center">
+                                  <div className="flex gap-1">
+                                    <span
+                                      className="bg-slate-400 dark:bg-slate-600 w-2 h-2 rounded-full animate-bounce"
+                                      style={{ animationDelay: "0s" }}
+                                    />
+                                    <span
+                                      className="bg-slate-400 dark:bg-slate-600 w-2 h-2 rounded-full animate-bounce"
+                                      style={{ animationDelay: "0.2s" }}
+                                    />
+                                    <span
+                                      className="bg-slate-400 dark:bg-slate-600 w-2 h-2 rounded-full animate-bounce"
+                                      style={{ animationDelay: "0.4s" }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       messages.map((m) => {
                         const isMe = m.sender_id === firebaseUser?.uid
@@ -331,20 +516,12 @@ export default function CommunicationPage({
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault()
-                            sendMessage()
+                            handleSend()
                           }
                         }}
                         className="min-h-10 flex-1"
                       />
-                      <Button
-                        onClick={sendMessage}
-                        disabled={
-                          !text.trim() ||
-                          (active.id === "resqbot") ||
-                          !active ||
-                          !firebaseUser
-                        }
-                      >
+                      <Button onClick={handleSend} disabled={!text.trim()||!firebaseUser}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
@@ -368,7 +545,7 @@ export default function CommunicationPage({
               </div>
             )}
           </Card>
-        </div>
+        </div>    
       </div>
     </div>
   )
