@@ -13,22 +13,22 @@ from app.agent.utils.admin import get_admin_ids
 
 class AgentAllocation(BaseAgent):
     def handle(self, state: State) -> State:
-        print('[DEBUG] Inside allocation agent')
-        print(f"[DEBUG] Processing disaster ID: {state.disaster.disaster_id}")
+        print('[DEBUG] app/agent/agents/agent_allocation Inside allocation agent')
+        print(f"[DEBUG] app/agent/agents/agent_allocation Processing disaster ID: {state.disaster.disaster_id}")
 
         volunteer_ids = get_all_volunteer_ids_by_disaster(state.disaster.disaster_id)
-        print(f"[DEBUG] Retrieved volunteer IDs: {volunteer_ids}")
+        print(f"[DEBUG] app/agent/agents/agent_allocation Retrieved volunteer IDs: {volunteer_ids}")
 
         admin_ids = get_admin_ids()
-        print(f"[DEBUG] Retrieved admin IDs: {admin_ids}")
+        print(f"[DEBUG] app/agent/agents/agent_allocation Retrieved admin IDs: {admin_ids}")
 
-        resource_provider_ids = volunteer_ids + admin_ids
+        resource_provider_ids = admin_ids + volunteer_ids
         
         task_allocations = []
         assigned_volunteer_ids = set()
 
         for task in state.tasks:
-            # print(f"\n[DEBUG] Processing Task ID: {task.id} - {task.description}")
+            # print(f"\n[DEBUG] app/agent/agents/agent_allocation Processing Task ID: {task.id} - {task.description}")
 
             resource_allocations = []
             volunteer_allocations = []
@@ -39,19 +39,19 @@ class AgentAllocation(BaseAgent):
                 for req in task.resource_requirements
             }
             manpower_requirements = task.manpower_requirement
-            print(f"[DEBUG] Resource Requirements: {resource_requirements}")
-            print(f"[DEBUG] Manpower Requirement: {manpower_requirements}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Resource Requirements: {resource_requirements}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Manpower Requirement: {manpower_requirements}")
 
             # -------- RESOURCE ALLOCATION --------
             for resource_type, quantity_required in resource_requirements.items():
-                print(f"[DEBUG] Allocating Resource Type: {resource_type} (Quantity Required: {quantity_required})")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Allocating Resource Type: {resource_type} (Quantity Required: {quantity_required})")
 
                 available_resources = [
                     resource for resource in get_resources_by_ids_and_type(resource_provider_ids, resource_type)
                     if resource.status == 'active' and resource.quantity > 0
                 ]
-                print(f"[DEBUG] Available resources found: {len(available_resources)}")
-                print(f"[DEBUG] Available resources found: {available_resources}")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Available resources found: {len(available_resources)}")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Available resources found: {available_resources}")
 
                 sorted_resources = sorted(
                     available_resources,
@@ -88,22 +88,22 @@ class AgentAllocation(BaseAgent):
                         resource_allocations.append(allocation)
                         allocated_quantity += allocatable_quantity
 
-                        # print(f"[DEBUG] Allocated {allocatable_quantity} units from resource ID: {resource.id}")
+                        # print(f"[DEBUG] app/agent/agents/agent_allocation Allocated {allocatable_quantity} units from resource ID: {resource.id}")
 
-                print(f"[DEBUG] Total allocated quantity for {resource_type}: {allocated_quantity}")
-                print(f"[DEBUG] Resource Allocations: {resource_allocations}")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Total allocated quantity for {resource_type}: {allocated_quantity}")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Resource Allocations: {resource_allocations}")
 
             # -------- VOLUNTEER (MANPOWER) ALLOCATION --------
-            print(f"[DEBUG] Allocating volunteers for manpower requirement: {manpower_requirements}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Allocating volunteers for manpower requirement: {manpower_requirements}")
 
             all_volunteers = get_all_volunteers_by_disaster(state.disaster.disaster_id)
-            print(f"[DEBUG] All volunteers found: {len(all_volunteers)}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation All volunteers found: {len(all_volunteers)}")
 
             available_volunteers = [
                 v for v in all_volunteers
                 if v.id in volunteer_ids and v.status == 'active' and v.id not in assigned_volunteer_ids
             ]
-            print(f"[DEBUG] Available volunteers after filtering: {len(available_volunteers)}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Available volunteers after filtering: {len(available_volunteers)}")
 
             sorted_volunteers = sorted(
                 available_volunteers,
@@ -122,10 +122,10 @@ class AgentAllocation(BaseAgent):
                 )
                 volunteer_allocations.append(allocation)
                 assigned_volunteer_ids.add(volunteer.id)
-                print(f"[DEBUG] Assigned Volunteer ID: {volunteer.id}")
+                print(f"[DEBUG] app/agent/agents/agent_allocation Assigned Volunteer ID: {volunteer.id}")
 
-            print(f"[DEBUG] Total volunteers allocated: {len(volunteer_allocations)}")
-            print(f"[DEBUG] Volunteer Allocations: {volunteer_allocations}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Total volunteers allocated: {len(volunteer_allocations)}")
+            print(f"[DEBUG] app/agent/agents/agent_allocation Volunteer Allocations: {volunteer_allocations}")
 
             # Store allocations
             task_allocations.append(TaskAllocation(
@@ -133,8 +133,8 @@ class AgentAllocation(BaseAgent):
                 resource_allocations=resource_allocations,
                 volunteer_allocations=volunteer_allocations
             ))
-            # print(f"[DEBUG] Finished allocations for Task ID: {task.id}")
+            # print(f"[DEBUG] app/agent/agents/agent_allocation Finished allocations for Task ID: {task.id}")
 
         state.task_allocations = task_allocations
-        print("[DEBUG] Allocation process complete. Returning updated state.")
+        print("[DEBUG] app/agent/agents/agent_allocation Allocation process complete. Returning updated state.")
         return state
