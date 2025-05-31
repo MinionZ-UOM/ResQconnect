@@ -90,6 +90,10 @@ export default function AdminTaskAllocationsPage() {
   // State to store fetched volunteer display names
   const [volunteerNames, setVolunteerNames] = useState<Record<string, string>>({})
 
+  // State to track assigned status for resources and volunteers
+  const [assignedResources, setAssignedResources] = useState<Record<string, boolean>>({})
+  const [assignedVolunteers, setAssignedVolunteers] = useState<Record<string, boolean>>({})
+
   // Hydrate from localStorage
   useEffect(() => {
     try {
@@ -106,7 +110,6 @@ export default function AdminTaskAllocationsPage() {
       try {
         const data = await callApi<Disaster[]>("disasters/", "GET")
         setDisasters(data)
-        console.log("Fetched disasters:", data)
         if (data.length) setSelectedDisaster(data[0].id)
       } catch {
         console.error("Failed to fetch disasters")
@@ -136,6 +139,9 @@ export default function AdminTaskAllocationsPage() {
       // Reset to show tasks first
       setActiveTab("tasks")
       setActiveAllocTab("resources")
+      // Reset assigned state when new data loads
+      setAssignedResources({})
+      setAssignedVolunteers({})
     } catch (err: any) {
       console.error(err)
       setError(err?.message || "Failed to fetch allocations")
@@ -263,8 +269,8 @@ export default function AdminTaskAllocationsPage() {
                 </CardDescription>
                 <div className="grid grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
                   <div>
-                    <span className="font-semibold">Name:</span>{" "}
-                    {current.disaster.name}
+                    <span className="font-semibold">ID:</span>{" "}
+                    {current.disaster.disaster_id}
                   </div>
                   <div>
                     <span className="font-semibold">Type:</span>{" "}
@@ -452,51 +458,73 @@ export default function AdminTaskAllocationsPage() {
                         </TableHeader>
                         <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
                           {current.task_allocations.flatMap((ta, ti) =>
-                            ta.resource_allocations.map((ra, ri) => (
-                              <TableRow
-                                key={`res-${ti}-${ri}`}
-                                className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                              >
-                                <TableCell className="py-3 px-2">
-                                  {ra.resource.resource_type}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {ra.resource.quantity}
-                                </TableCell>
-                                <TableCell className="py-3 px-2 whitespace-normal">
-                                  {ta.task.description}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {donorNames[ra.resource.donor_id] ||
-                                    ra.resource.donor_id}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {ra.resource.donor_type}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {ra.resource.status}
-                                </TableCell>
-                                <TableCell className="py-3 px-2 flex items-center">
-                                  <Badge
-                                    variant={
-                                      ra.accepted === "pending"
-                                        ? "outline"
-                                        : ra.accepted === "accepted"
-                                        ? "default"
-                                        : "destructive"
-                                    }
-                                  >
-                                    {ra.accepted}
-                                  </Badge>
-                                  <Button
-                                    size="sm"
-                                    className="ml-2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
-                                  >
-                                    Authorize
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))
+                            ta.resource_allocations.map((ra, ri) => {
+                              const key = `res-${ti}-${ri}`
+                              const isAssigned = assignedResources[key] === true
+                              return (
+                                <TableRow
+                                  key={key}
+                                  className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                >
+                                  <TableCell className="py-3 px-2">
+                                    {ra.resource.resource_type}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {ra.resource.quantity}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2 whitespace-normal">
+                                    {ta.task.description}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {donorNames[ra.resource.donor_id] ||
+                                      ra.resource.donor_id}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {ra.resource.donor_type}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {ra.resource.status}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2 flex items-center">
+                                    <Badge
+                                      variant={
+                                        ra.accepted === "pending"
+                                          ? "outline"
+                                          : ra.accepted === "accepted"
+                                          ? "default"
+                                          : "destructive"
+                                      }
+                                    >
+                                      {ra.accepted}
+                                    </Badge>
+                                    <Button
+                                      size="sm"
+                                      className={`ml-2 px-2 py-1 rounded ${
+                                        isAssigned
+                                          ? "bg-red-600 hover:bg-red-700 text-white"
+                                          : "bg-green-600 hover:bg-green-700 text-white"
+                                      }`}
+                                      onClick={() => {
+                                        if (!isAssigned) {
+                                          const confirmed = window.confirm(
+                                            "Are you sure?"
+                                          )
+                                          if (confirmed) {
+                                            setAssignedResources((prev) => ({
+                                              ...prev,
+                                              [key]: true,
+                                            }))
+                                          }
+                                        }
+                                      }}
+                                      disabled={isAssigned}
+                                    >
+                                      {isAssigned ? "Assigned" : "Authorize"}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })
                           )}
                         </TableBody>
                       </Table>
@@ -526,46 +554,68 @@ export default function AdminTaskAllocationsPage() {
                         </TableHeader>
                         <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
                           {current.task_allocations.flatMap((ta, ti) =>
-                            ta.volunteer_allocations.map((va, vi) => (
-                              <TableRow
-                                key={`vol-${ti}-${vi}`}
-                                className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                              >
-                                <TableCell className="py-3 px-2">
-                                  {volunteerNames[va.volunteer.id] ||
-                                    va.volunteer.id}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {va.volunteer.location.lat.toFixed(4)},{" "}
-                                  {va.volunteer.location.lng.toFixed(4)}
-                                </TableCell>
-                                <TableCell className="py-3 px-2">
-                                  {va.volunteer.status}
-                                </TableCell>
-                                <TableCell className="py-3 px-2 whitespace-normal">
-                                  {ta.task.description}
-                                </TableCell>
-                                <TableCell className="py-3 px-2 flex items-center">
-                                  <Badge
-                                    variant={
-                                      va.accepted === "pending"
-                                        ? "outline"
-                                        : va.accepted === "accepted"
-                                        ? "default"
-                                        : "destructive"
-                                    }
-                                  >
-                                    {va.accepted}
-                                  </Badge>
-                                  <Button
-                                    size="sm"
-                                    className="ml-2 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded"
-                                  >
-                                    Authorize
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))
+                            ta.volunteer_allocations.map((va, vi) => {
+                              const key = `vol-${ti}-${vi}`
+                              const isAssigned = assignedVolunteers[key] === true
+                              return (
+                                <TableRow
+                                  key={key}
+                                  className="even:bg-gray-50 dark:even:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                >
+                                  <TableCell className="py-3 px-2">
+                                    {volunteerNames[va.volunteer.id] ||
+                                      va.volunteer.id}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {va.volunteer.location.lat.toFixed(4)},{" "}
+                                    {va.volunteer.location.lng.toFixed(4)}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2">
+                                    {va.volunteer.status}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2 whitespace-normal">
+                                    {ta.task.description}
+                                  </TableCell>
+                                  <TableCell className="py-3 px-2 flex items-center">
+                                    <Badge
+                                      variant={
+                                        va.accepted === "pending"
+                                          ? "outline"
+                                          : va.accepted === "accepted"
+                                          ? "default"
+                                          : "destructive"
+                                      }
+                                    >
+                                      {va.accepted}
+                                    </Badge>
+                                    <Button
+                                      size="sm"
+                                      className={`ml-2 px-2 py-1 rounded ${
+                                        isAssigned
+                                          ? "bg-red-600 hover:bg-red-700 text-white"
+                                          : "bg-green-600 hover:bg-green-700 text-white"
+                                      }`}
+                                      onClick={() => {
+                                        if (!isAssigned) {
+                                          const confirmed = window.confirm(
+                                            "Are you sure?"
+                                          )
+                                          if (confirmed) {
+                                            setAssignedVolunteers((prev) => ({
+                                              ...prev,
+                                              [key]: true,
+                                            }))
+                                          }
+                                        }
+                                      }}
+                                      disabled={isAssigned}
+                                    >
+                                      {isAssigned ? "Assigned" : "Authorize"}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })
                           )}
                         </TableBody>
                       </Table>
