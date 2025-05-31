@@ -106,6 +106,7 @@ export default function AdminTaskAllocationsPage() {
       try {
         const data = await callApi<Disaster[]>("disasters/", "GET")
         setDisasters(data)
+        console.log("Fetched disasters:", data)
         if (data.length) setSelectedDisaster(data[0].id)
       } catch {
         console.error("Failed to fetch disasters")
@@ -262,8 +263,8 @@ export default function AdminTaskAllocationsPage() {
                 </CardDescription>
                 <div className="grid grid-cols-2 gap-4 text-gray-700 dark:text-gray-300">
                   <div>
-                    <span className="font-semibold">ID:</span>{" "}
-                    {current.disaster.disaster_id}
+                    <span className="font-semibold">Name:</span>{" "}
+                    {current.disaster.name}
                   </div>
                   <div>
                     <span className="font-semibold">Type:</span>{" "}
