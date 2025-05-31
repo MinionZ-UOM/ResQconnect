@@ -14,7 +14,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-900">
 
-      <div className="w-64 flex-shrink-0 overflow-y-auto border-r border-slate-200 dark:border-slate-700">
+      <div>
         <MainSidebar userRole={userRole} userName={userName} userInitials={userInitials} />
       </div>
 

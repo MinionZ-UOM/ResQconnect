@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AlertTriangle, Camera, MapPin, Upload, X } from "lucide-react";
+import { Upload, MapPin, X } from "lucide-react";
+
+import { enqueueRequest } from "@/lib/offlineQueue";
 
 interface MediaItem {
   url:     string;
@@ -97,7 +99,6 @@ export default function VolunteerReportPage() {
 
   // 3) Build previews
   useEffect(() => {
-    // revoke old
     previews.forEach((u) => URL.revokeObjectURL(u));
     const newPreviews = selectedFiles.map((f) => URL.createObjectURL(f));
     setPreviews(newPreviews);
@@ -156,7 +157,6 @@ export default function VolunteerReportPage() {
       alert("Location not available.");
       return;
     }
-    // if user hasn't yet uploaded selected files, do it now:
     if (selectedFiles.length) {
       await uploadAll();
     }
@@ -174,14 +174,35 @@ export default function VolunteerReportPage() {
       image_urls: media.map((m) => m.url),
     };
 
-    try {
-      await callApi("observations", "POST", payload);
-      alert("Observation submitted!");
-      router.push(`/dashboard/volunteer`);
-    } catch {
-      alert("Submit failed.");
-      setIsSubmitting(false);
-    }
+    const submitOrQueue = async () => {
+      if (!navigator.onLine) {
+        await enqueueRequest({
+          url: "observations",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert("Offline: saved locally and will sync when back online.");
+        router.push(`/dashboard/volunteer`);
+        return;
+      }
+      try {
+        await callApi("observations", "POST", payload);
+        alert("Observation submitted!");
+        router.push(`/dashboard/volunteer`);
+      } catch {
+        await enqueueRequest({
+          url: "observations",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert("Submit failed: saved locally for retry.");
+        router.push(`/dashboard/volunteer`);
+      }
+    };
+
+    await submitOrQueue();
   };
 
   return (

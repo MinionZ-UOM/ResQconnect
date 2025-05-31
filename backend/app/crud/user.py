@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from fastapi import HTTPException, status
 from app.core.firebase import users_ref
 from app.schemas.user import User, Coordinates
@@ -81,3 +81,22 @@ def get_user_availability(uid: str) -> bool:
 
     user_data = doc_snap.to_dict()
     return user_data.get("availability", False)
+
+def get_user_ids_by_role_id(role_id: str) -> List[str]:
+    """
+    Retrieves user IDs for users with the given role_id.
+    """
+    query = users_ref().where('role_id', '==', role_id).stream()
+    user_ids = []
+
+    print(f"[DEBUG] Fetching users with role_id: {role_id}")
+
+    for doc in query:
+        user_data = doc.to_dict()
+        uid = user_data.get('uid')
+        if uid:
+            user_ids.append(uid)
+            print(f"[DEBUG] Found user: {uid} with role_id: {role_id}")
+
+    print(f"[DEBUG] Total users found with role_id '{role_id}': {len(user_ids)}")
+    return user_ids

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Trash2 } from "lucide-react";
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
+import { Button } from "@/components/ui/button";
 
 type Disaster = {
   id: string;
@@ -195,8 +196,21 @@ export default function DisasterPage() {
 
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6 ml-8 md:ml-0">
+      <header className="mb-6 ml-8 md:ml-0 flex flex-wrap justify-between items-center">
         <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Disasters</h1>
+
+        {/* <div className="flex justify-end"> */}
+        {/* <button
+          onClick={() => setShowModal(true)}
+          className="px-8 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
+        >
+          Report a New Disaster
+        </button> */}
+      {/* </div> */}
+
+      <Button onClick={() => setShowModal(true)}>
+          Register a New Disaster
+      </Button>
       </header>
 
       {loading ? (
@@ -248,14 +262,7 @@ export default function DisasterPage() {
         </div>
       )}
 
-      <div className="flex justify-center">
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-8 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
-        >
-          Report a New Disaster
-        </button>
-      </div>
+      
 
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <h3 className="text-lg font-medium mb-4">Register New Disaster</h3>
