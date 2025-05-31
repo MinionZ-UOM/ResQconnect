@@ -53,7 +53,7 @@ export default function CommunicationPage({
   const [text, setText] = useState("")
   const [userCache, setUserCache] = useState<Record<string, string>>({})
   const [isBotTyping, setIsBotTyping] = useState(false)
-  const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set()) // ← NEW: tracks which trace_ids have been scored
+  const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set())
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -186,7 +186,6 @@ export default function CommunicationPage({
         trace?: string
       }>("chatbot/ask", "POST", body)
       console.log("Bot response:", res)
-      // Prioritize `response` field, fall back to `message`
       const botText = res.response || res.message || ""
       const traceId = res.trace || ""
 
@@ -199,7 +198,7 @@ export default function CommunicationPage({
           seconds: Math.floor(botNow / 1000),
           nanoseconds: 0,
         },
-        trace_id: traceId, // ← NEW: save trace ID on the message
+        trace_id: traceId,
       }
       setMessages((prev) => [...prev, botMsg])
       setIsBotTyping(false)
@@ -229,7 +228,6 @@ export default function CommunicationPage({
     }
   }
 
-  // ← UPDATED: after scoring, we add the trace ID to scoredTraceIds
   const handleScore = async (traceId: string, value: number) => {
     if (!traceId) return
     try {
@@ -427,7 +425,7 @@ export default function CommunicationPage({
                                           handleScore(m.trace_id || "", 1)
                                         }
                                       >
-                                        Like
+                                        👍
                                       </Button>
                                       <Button
                                         size="sm"
@@ -435,7 +433,7 @@ export default function CommunicationPage({
                                           handleScore(m.trace_id || "", -1)
                                         }
                                       >
-                                        Dislike
+                                        👎
                                       </Button>
                                     </div>
                                   )}
@@ -591,7 +589,7 @@ export default function CommunicationPage({
               </div>
             )}
           </Card>
-        </div>    
+        </div>
       </div>
     </div>
   )
