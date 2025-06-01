@@ -430,7 +430,7 @@ export default function CommunicationPage({
                                       <Button
                                         size="sm"
                                         onClick={() =>
-                                          handleScore(m.trace_id || "", -1)
+                                          handleScore(m.trace_id || "", 0)
                                         }
                                       >
                                         👎
