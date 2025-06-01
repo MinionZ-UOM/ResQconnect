@@ -9,12 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { RequestsOverview } from "@/components/dashboard/requests-overview"
-import { ResourcesOverview } from "@/components/dashboard/resources-overview"
+// import { ResourcesOverview } from "@/components/dashboard/resources-overview"
 import { MetricsDisplay } from "@/components/dashboard/metrics-display"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { AlertsPanel } from "@/components/dashboard/alerts-panel"
 import { UserStats } from "@/components/dashboard/user-stats"
-import { TasksOverview } from "@/components/dashboard/tasks-overview"
+// import { TasksOverview } from "@/components/dashboard/tasks-overview"
 import type { Disaster } from "@/lib/types"
 
 export default function AdminDashboardPage() {
@@ -128,8 +128,8 @@ export default function AdminDashboardPage() {
             <Tabs defaultValue="requests">
               <TabsList className="mb-4 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="requests">Requests</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="resources">Resources</TabsTrigger>
+                {/* <TabsTrigger value="tasks">Tasks</TabsTrigger> */}
+                {/* <TabsTrigger value="resources">Resources</TabsTrigger> */}
                 <TabsTrigger value="users">Users</TabsTrigger>
                 <TabsTrigger value="metrics">Metrics</TabsTrigger>
               </TabsList>
@@ -137,12 +137,12 @@ export default function AdminDashboardPage() {
                 <TabsContent value="requests">
                   <RequestsOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
                 </TabsContent>
-                <TabsContent value="tasks">
+                {/* <TabsContent value="tasks">
                   <TasksOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
-                </TabsContent>
-                <TabsContent value="resources">
+                </TabsContent> */}
+                {/* <TabsContent value="resources">
                   <ResourcesOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
-                </TabsContent>
+                </TabsContent> */}
                 <TabsContent value="users">
                   <UserStats disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
                 </TabsContent>
