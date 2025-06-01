@@ -1,5 +1,5 @@
 # app/schemas/disaster.py
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,10 @@ class DisasterCreate(BaseModel):
     description: str
     location: GeoPoint
     image_urls: List[str] = []
-
+    # Optional fields added below
+    type: Optional[str] = None
+    severity: Optional[str] = None
+    affected_count: Optional[int] = None
 class DisasterResponse(DisasterCreate):
     id: str
     created_at: datetime

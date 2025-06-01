@@ -18,6 +18,9 @@ type Disaster = {
   created_at: string;
   created_by: string;
   chat_session_id: string;
+  type?: string;
+  severity?: string;
+  affected_count?: number;
 };
 
 type FormState = {
@@ -26,6 +29,9 @@ type FormState = {
   lat: string;
   lng: string;
   images: File[];
+  type: string;
+  severity: string;
+  affectedCount: string;
 };
 
 function Modal({
@@ -98,6 +104,9 @@ export default function DisasterPage() {
     lat: "",
     lng: "",
     images: [],
+    type: "",
+    severity: "",
+    affectedCount: "",
   });
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -140,7 +149,9 @@ export default function DisasterPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
@@ -170,20 +181,44 @@ export default function DisasterPage() {
       return;
     }
 
+    // Validate affectedCount if provided
+    let affectedCountNum: number | undefined = undefined;
+    if (form.affectedCount) {
+      const ac = parseInt(form.affectedCount, 10);
+      if (isNaN(ac) || ac < 0) {
+        setError("Affected count must be a non-negative integer");
+        setSubmitting(false);
+        return;
+      }
+      affectedCountNum = ac;
+    }
+
     try {
       const image_urls = await Promise.all(
         form.images.map((file) => uploadToImageKit(file))
       );
 
       await callApi("disasters/", "POST", {
-        name:        form.name,
+        name: form.name,
         description: form.description,
-        location:    { lat: latNum, lng: lngNum },
+        location: { lat: latNum, lng: lngNum },
         image_urls,
+        type: form.type,
+        severity: form.severity,
+        affected_count: affectedCountNum,
       });
 
       setShowModal(false);
-      setForm({ name: "", description: "", lat: "", lng: "", images: [] });
+      setForm({
+        name: "",
+        description: "",
+        lat: "",
+        lng: "",
+        images: [],
+        type: "",
+        severity: "",
+        affectedCount: "",
+      });
       setPreviews([]);
       loadDisasters();
     } catch (err: any) {
@@ -197,20 +232,13 @@ export default function DisasterPage() {
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       <header className="mb-6 ml-8 md:ml-0 flex flex-wrap justify-between items-center">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Disasters</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+          Disasters
+        </h1>
 
-        {/* <div className="flex justify-end"> */}
-        {/* <button
-          onClick={() => setShowModal(true)}
-          className="px-8 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
-        >
-          Report a New Disaster
-        </button> */}
-      {/* </div> */}
-
-      <Button onClick={() => setShowModal(true)}>
+        <Button onClick={() => setShowModal(true)}>
           Register a New Disaster
-      </Button>
+        </Button>
       </header>
 
       {loading ? (
@@ -220,8 +248,7 @@ export default function DisasterPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {disasters.map((d) => {
-            const primaryImage =
-              d.image_urls.find((u) => u?.trim()) || null;
+            const primaryImage = d.image_urls.find((u) => u?.trim()) || null;
 
             return (
               <div
@@ -261,8 +288,6 @@ export default function DisasterPage() {
           })}
         </div>
       )}
-
-      
 
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <h3 className="text-lg font-medium mb-4">Register New Disaster</h3>
@@ -317,6 +342,57 @@ export default function DisasterPage() {
                 className="w-full rounded-lg border px-3 py-2"
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 font-medium">Disaster Type</label>
+              <select
+                name="type"
+                required
+                value={form.type}
+                onChange={handleChange}
+                className="w-full rounded-lg border px-3 py-2"
+              >
+                <option value="" disabled>
+                  Select type…
+                </option>
+                <option value="Flood">Flood</option>
+                <option value="Earthquake">Earthquake</option>
+                <option value="Wildfire">Wildfire</option>
+                <option value="Hurricane">Hurricane</option>
+                <option value="Tornado">Tornado</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Severity</label>
+              <select
+                name="severity"
+                required
+                value={form.severity}
+                onChange={handleChange}
+                className="w-full rounded-lg border px-3 py-2"
+              >
+                <option value="" disabled>
+                  Select severity…
+                </option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Affected Count</label>
+            <input
+              name="affectedCount"
+              type="number"
+              min={0}
+              required
+              value={form.affectedCount}
+              onChange={handleChange}
+              className="w-full rounded-lg border px-3 py-2"
+            />
           </div>
           <div>
             <label className="block mb-1 font-medium">Images (optional)</label>
