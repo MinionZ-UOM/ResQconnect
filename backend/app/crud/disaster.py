@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from app.core.firebase import get_db
 from app.schemas.disaster import DisasterCreate, DisasterResponse
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 db = get_db()
 
 
@@ -182,15 +185,15 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     each with a non-null 'display_name' (falling back to UID).
     - Returns None if the disaster does not exist.
     """
-    print(f"[DEBUG] Checking if disaster '{disaster_id}' exists.")
+    logger.debug(f"Checking if disaster '{disaster_id}' exists.")
     doc_ref = db.collection("disasters").document(disaster_id)
     if not doc_ref.get().exists:
-        print(f"[DEBUG] Disaster '{disaster_id}' does not exist.")
+        logger.debug(f"Disaster '{disaster_id}' does not exist.")
         return None
 
     volunteers: List[dict] = []
-    print(
-        f"[DEBUG] Fetching participants with role='volunteer' for disaster '{disaster_id}'.")
+    logger.debug(
+        f"Fetching participants with role='volunteer' for disaster '{disaster_id}'.")
 
     for part_snap in (
         doc_ref.collection("participants")
@@ -199,24 +202,24 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     ):
         uid = part_snap.id
         pdata = part_snap.to_dict() or {}
-        print(f"[DEBUG] Processing participant UID: {uid}")
+        logger.debug(f"Processing participant UID: {uid}")
 
         user_snap = db.collection("users").document(uid).get()
         if user_snap.exists:
             display_name = user_snap.get("display_name") or uid
             location = user_snap.get("location")
-            print(
+            logger.debug(
                 f"************location of {uid} is {location} **************")
             if location:
                 location_lat = location.get('lat')
                 location_lng = location.get('lng')
 
-            print(
-                f"[DEBUG] Found user document for UID: {uid}, display_name: {display_name}")
+            logger.debug(
+                f"Found user document for UID: {uid}, display_name: {display_name}")
         else:
             display_name = uid
-            print(
-                f"[DEBUG] No user document found for UID: {uid}. Using UID as display_name.")
+            logger.debug(
+                f"No user document found for UID: {uid}. Using UID as display_name.")
 
         volunteers.append({
             "uid": uid,
@@ -225,11 +228,11 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
             "location_lng": location_lng,
             **pdata
         })
-        print(
-            f"[DEBUG] Volunteer record added: UID: {uid}, Display Name: {display_name}")
+        logger.debug(
+            f"Volunteer record added: UID: {uid}, Display Name: {display_name}")
 
-    print(f"[DEBUG] Total volunteers found: {len(volunteers)}")
-    print(f"[DEBUG] Volunteers found: {volunteers}")
+    logger.debug(f"Total volunteers found: {len(volunteers)}")
+    logger.debug(f"Volunteers found: {volunteers}")
     return volunteers
 
 

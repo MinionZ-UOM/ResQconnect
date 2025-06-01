@@ -84,7 +84,6 @@ class Chatbot:
         langfuse_handler_trace = trace.get_langchain_handler(
             update_parent=True  # add i/o to trace itself as well
         )
-        print(trace.id)
 
         response = await self.graph.ainvoke({"messages": message}, config={"callbacks": [langfuse_handler_trace], "run_name": 'langgraph_resq_chatbot'})
 

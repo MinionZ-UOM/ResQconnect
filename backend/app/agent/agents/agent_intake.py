@@ -5,13 +5,16 @@ from app.agent.utils.disaster import get_disaster_by_id
 from app.agent.utils.location import get_location
 from app.agent.utils.request import analyse_image, parse_text, stt
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 class AgentIntake(BaseAgent):
     def handle(self, state: State) -> State:
-        print('Inside intake agent')
+        logger.info('Inside intake agent')
 
         if state.request.coordinates:
             state.request.location_from_coordinates = get_location(state.request.coordinates)
-            print(f'location_from_coordinates: {state.request.location_from_coordinates}')
+            logger.debug(f'location_from_coordinates: {state.request.location_from_coordinates}')
 
         user_prompt = ""
         if state.request.original_request_text_available:
@@ -23,7 +26,7 @@ class AgentIntake(BaseAgent):
             state.request.extracted_request_image = analyse_image(state.request.original_request_image)
             user_prompt += f"\nUser's image input:\n{state.request.extracted_request_image}"
 
-        print(user_prompt)
+        logger.debug(user_prompt)
 
         parsed_request = parse_text(user_prompt)
 

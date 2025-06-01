@@ -4,6 +4,9 @@ Run once: python -m scripts.seed_roles
 
 from app.core.firebase import roles_ref, get_db
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 ROLES = {
     "admin": {
         "name": "Administrator",
@@ -49,7 +52,7 @@ def run():
     for rid, data in ROLES.items():
         batch.set(roles_ref().document(rid), data, merge=True)
     batch.commit()
-    print("Roles seeded ✔")
+    logger.info("Roles seeded ✔")
 
 if __name__ == "__main__":
     run()

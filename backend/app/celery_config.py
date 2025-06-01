@@ -3,6 +3,9 @@ import sys
 from celery import Celery, shared_task
 from redis import ConnectionPool, Redis
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # -------------------------------------------------------------------
@@ -60,5 +63,5 @@ def run_agentic_workflow(self, agent_payload: dict):
         response = manager.run(agent_payload)
         return response
     except Exception as e:
-        print(f"[ERROR] Agentic workflow failed: {e}")
+        logger.error(f"Agentic workflow failed: {e}")
         raise self.retry(exc=e)
