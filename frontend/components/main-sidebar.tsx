@@ -53,7 +53,7 @@ export function MainSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [notifications] = useState(3);
+  const [notifications] = useState();
 
   // derive the slug from backend key, e.g. "first_responder" → "first-responder"
   const backendKey = uiToBackend[userRole];
