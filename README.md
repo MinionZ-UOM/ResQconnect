@@ -1,4 +1,5 @@
 # Live Website 
+- Note that this is an older version of the application and some of the features are yet to be deployed
 - https://resqconnectintellihack.netlify.app/
 
 # Backend Setup Guide
