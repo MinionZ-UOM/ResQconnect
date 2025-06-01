@@ -1,16 +1,17 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import { useState, useEffect } from "react";
+import React, { use, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import type { Request, Resource, Disaster } from "@/lib/types";
-
-interface MapPageProps {
-  params: {
-    role: string;
-  };
-}
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import type { DisasterLocation, Request, Resource } from "@/lib/types";
+import { callApi } from "@/lib/api";
 
 // Dynamically import MapView so that it only ever loads client-side:
 const MapView = dynamic(
@@ -18,50 +19,27 @@ const MapView = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-full flex items-center justify-center">
-        Loading map…
-      </div>
+      <div className="h-full flex items-center justify-center">Loading map…</div>
     ),
   }
 );
 
+interface MapPageProps {
+  params: {
+    role: string;
+  };
+}
+
 export default function MapPage({ params }: MapPageProps) {
-  // Role is still available if you need it later
-  const { role } = params;
+  // Unwrap `params` before accessing its properties:
+  const { role } = use(params);
 
-  const [mapLoaded, setMapLoaded] = useState(false);
+  // ─── Real “disasters” pulled from /api/location ───
+  const [disasters, setDisasters] = useState<DisasterLocation[]>([]);
+  const [isLoadingDisasters, setIsLoadingDisasters] = useState(true);
 
-  // We only keep track of which ID was selected in each dropdown.
-  // No detail cards will be shown, so we don’t need to store the full object.
-  const [selectedDisasterId, setSelectedDisasterId] = useState<string>("");
-  const [selectedRequestId, setSelectedRequestId] = useState<string>("");
-  const [selectedResourceId, setSelectedResourceId] = useState<string>("");
-
-  // ──────────────────────────────────────────────
-  // Dummy data arrays (still passed down to MapView for marker plotting)
-  // ──────────────────────────────────────────────
-  const mockDisasters: Disaster[] = [
-    {
-      id: "DIS-001",
-      name: "Flood Zone A",
-      description: "Severe flooding in northern region",
-      severity: "High",
-      location: { latitude: 7.95, longitude: 80.78, address: "North Riverbank" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 120),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 120),
-    },
-    {
-      id: "DIS-002",
-      name: "Earthquake Epicenter",
-      description: "M5.8 quake near Badulla",
-      severity: "Critical",
-      location: { latitude: 6.99, longitude: 81.05, address: "Badulla District" },
-      createdAt: new Date(Date.now() - 1000 * 60 * 300),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 300),
-    },
-  ];
-
-  const mockRequests: Request[] = [
+  // ─── Still‐mocking “requests” + “resources” for now ───
+  const [requests] = useState<Request[]>([
     {
       id: "REQ-001",
       title: "Medical assistance needed",
@@ -87,9 +65,9 @@ export default function MapPage({ params }: MapPageProps) {
       createdAt: new Date(Date.now() - 1000 * 60 * 60),
       updatedAt: new Date(Date.now() - 1000 * 60 * 45),
     },
-  ];
+  ]);
 
-  const mockResources: Resource[] = [
+  const [resources] = useState<Resource[]>([
     {
       id: "RES-001",
       name: "Ambulance",
@@ -110,16 +88,37 @@ export default function MapPage({ params }: MapPageProps) {
       createdAt: new Date(),
       updatedAt: new Date(),
     },
-  ];
+  ]);
 
-  // ──────────────────────────────────────────────
-  // Simulate map loading
-  // ──────────────────────────────────────────────
+  // ─── Dropdown selections ───
+  const [selectedDisasterId, setSelectedDisasterId] = useState<string>("");
+  const [selectedRequestId, setSelectedRequestId] = useState<string>("");
+  const [selectedResourceId, setSelectedResourceId] = useState<string>("");
+
+  // ─── Simulate map loading ───
+  const [mapLoaded, setMapLoaded] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMapLoaded(true);
-    }, 1000);
+    const timer = setTimeout(() => setMapLoaded(true), 1000);
     return () => clearTimeout(timer);
+  }, []);
+
+  // ─── Fetch real disasters from /api/location ───
+  useEffect(() => {
+    (async () => {
+      try {
+        setIsLoadingDisasters(true);
+        const data = await callApi<DisasterLocation[]>("disasters/location");
+
+        console.log("Fetched disaster locations:", data);
+        
+        // API returns [{ id, name, location: { lat, lng } }, …]
+        setDisasters(data);
+      } catch (err) {
+        console.error("Failed to fetch disaster locations:", err);
+      } finally {
+        setIsLoadingDisasters(false);
+      }
+    })();
   }, []);
 
   return (
@@ -134,8 +133,7 @@ export default function MapPage({ params }: MapPageProps) {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* ────────────────────────────────────────────── */}
-        {/* LEFT COLUMN: Three dropdown cards only */}
+        {/* ── LEFT COLUMN: Three dropdown cards ── */}
         <div className="md:col-span-1 space-y-6">
           {/* ── Disasters Dropdown ── */}
           <Card>
@@ -143,21 +141,25 @@ export default function MapPage({ params }: MapPageProps) {
               <CardTitle>Disasters</CardTitle>
             </CardHeader>
             <CardContent>
-              <Select
-                value={selectedDisasterId}
-                onValueChange={(val) => setSelectedDisasterId(val)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a Disaster" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockDisasters.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isLoadingDisasters ? (
+                <div className="text-sm text-slate-500">Loading disasters…</div>
+              ) : (
+                <Select
+                  value={selectedDisasterId}
+                  onValueChange={(val) => setSelectedDisasterId(val)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a Disaster" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {disasters.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </CardContent>
           </Card>
 
@@ -175,7 +177,7 @@ export default function MapPage({ params }: MapPageProps) {
                   <SelectValue placeholder="Select a Request" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockRequests.map((r) => (
+                  {requests.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.title}
                     </SelectItem>
@@ -199,7 +201,7 @@ export default function MapPage({ params }: MapPageProps) {
                   <SelectValue placeholder="Select a Resource" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockResources.map((res) => (
+                  {resources.map((res) => (
                     <SelectItem key={res.id} value={res.id}>
                       {res.name}
                     </SelectItem>
@@ -210,8 +212,7 @@ export default function MapPage({ params }: MapPageProps) {
           </Card>
         </div>
 
-        {/* ────────────────────────────────────────────── */}
-        {/* RIGHT COLUMN: Map only */}
+        {/* ── RIGHT COLUMN: Map only ── */}
         <div className="md:col-span-3">
           <Card className="h-[calc(100vh-12rem)]">
             <CardContent className="p-0 h-full">
@@ -222,11 +223,14 @@ export default function MapPage({ params }: MapPageProps) {
               ) : (
                 <div className="relative h-full bg-slate-100 dark:bg-slate-800">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    {/* Pass all three mock arrays so MapView can plot markers */}
+                    {/* Pass the fetched disasters + mock requests & resources to MapView */}
                     <MapView
-                      disasters={mockDisasters}
-                      requests={mockRequests}
-                      resources={mockResources}
+                      disasters={disasters}
+                      requests={requests}
+                      resources={resources}
+                      selectedDisasterId={selectedDisasterId}
+                      selectedRequestId={selectedRequestId}
+                      selectedResourceId={selectedResourceId}
                     />
                   </div>
                 </div>
