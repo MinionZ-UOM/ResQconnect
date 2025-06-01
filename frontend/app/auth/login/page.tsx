@@ -1,55 +1,130 @@
-"use client"
+"use client";
 
-import type React from "react"
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword, User as FirebaseUser } from "firebase/auth";
+import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { auth } from "@/lib/firebaseClient";
+import { callApi } from "@/lib/api";
+import type { BackendRole } from "@/lib/roles";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { Eye, EyeOff, AlertTriangle } from "lucide-react"
-import Link from "next/link"
-import { auth } from "@/lib/firebaseClient"
-import { callApi } from "@/lib/api"
-import type { BackendRole } from "@/lib/roles"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+interface UserProfile {
+  uid: string;
+  email: string;
+  role_id: BackendRole;
+  location?: { lat: number; lng: number } | null;
+}
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  // State for location prompt
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
+  const getBrowserLocation = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation not supported by your browser."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (err) => {
+          reject(err);
+        },
+        { enableHighAccuracy: true }
+      );
+    });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
     try {
-      // Sign in with Firebase
       await signInWithEmailAndPassword(auth, email, password)
 
       // Use auth/me endpoint for consistency with signup page
       const profile = await callApi<{ role_id: BackendRole }>("users/me")
       console.log("Login profile response:", profile)
-
       const role = profile.role_id.toLowerCase();
       console.log("User role:", role)
 
-      // Redirect based on role
-      role === "admin"
-        ? router.push("/admin/dashboard")
-        : router.push(`/dashboard/${role}`);
+      if (role === "affected_individual" && !profile.location) {
+        setShowLocationPrompt(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push(`/dashboard/${role}`);
+      }
     } catch (err) {
-      console.error("Login error:", err)
-      setError("Invalid email or password. Please try again.")
+      console.error("Login error:", err);
+      setError("Invalid email or password. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
+  const handleShareLocation = async () => {
+    setLocationError(null);
+    setIsSavingLocation(true);
+
+    try {
+      const { lat, lng } = await getBrowserLocation();
+      const token = await auth.currentUser!.getIdToken();
+
+      const res = await fetch("/api/users/me/location", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ lat, lng }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.detail || "Failed to save location.");
+      }
+
+      setShowLocationPrompt(false);
+      router.push(`/dashboard/affected_individual`);
+    } catch (geoErr: any) {
+      console.error("Error fetching/saving location:", geoErr);
+      setLocationError(geoErr.message || "Could not fetch your location. Please try again.");
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-b from-blue-50 to-blue-100 px-4 py-8 dark:from-slate-900 dark:to-slate-800 sm:px-6 md:px-8">
@@ -136,6 +211,34 @@ export default function LoginPage() {
           </form>
         </Card>
       </div>
+
+      {showLocationPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center px-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <h2 className="text-xl font-semibold mb-4">Please share your location</h2>
+            <p className="text-sm mb-4">
+              We need your current GPS location to proceed. This helps us route your request to nearby volunteers.
+            </p>
+            {locationError && <div className="text-red-600 text-sm mb-2">{locationError}</div>}
+            <Button
+              onClick={handleShareLocation}
+              className="w-full mb-2"
+              disabled={isSavingLocation}
+            >
+              {isSavingLocation ? "Requesting Location…" : "Share My Location"}
+            </Button>
+            <button
+              onClick={() => {
+                setShowLocationPrompt(false);
+                router.push("/dashboard/affected_individual");
+              }}
+              className="text-sm text-gray-600 hover:underline"
+            >
+              Skip for now
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }
