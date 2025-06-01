@@ -1,3 +1,6 @@
+# Live Website 
+- https://resqconnectintellihack.netlify.app/
+
 # Backend Setup Guide
 
 ## Prerequisites
