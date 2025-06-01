@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
 
   const getBrowserLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve, reject) => {
@@ -67,15 +68,17 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email, password);
 
       // Use auth/me endpoint for consistency with signup page
-      const profile = await callApi<{ role_id: BackendRole }>("users/me")
-      console.log("Login profile response:", profile)
+      const profile = await callApi<{ role_id: BackendRole; location?: { lat: number; lng: number } }>(
+        "users/me"
+      );
       const role = profile.role_id.toLowerCase();
-      console.log("User role:", role)
 
-      if (role === "affected_individual" && !profile.location) {
+      // PROMPT for location if role is affected_individual OR first_responder and no location
+      if ((role === "affected_individual" || role === "first_responder") && !profile.location) {
+        setPendingRole(role);
         setShowLocationPrompt(true);
         setIsLoading(false);
         return;
@@ -117,10 +120,16 @@ export default function LoginPage() {
       }
 
       setShowLocationPrompt(false);
-      router.push(`/dashboard/affected_individual`);
+      if (pendingRole) {
+        router.push(`/dashboard/${pendingRole}`);
+      } else {
+        router.push("/");
+      }
     } catch (geoErr: any) {
       console.error("Error fetching/saving location:", geoErr);
-      setLocationError(geoErr.message || "Could not fetch your location. Please try again.");
+      setLocationError(
+        geoErr.message || "Could not fetch your location. Please try again."
+      );
     } finally {
       setIsSavingLocation(false);
     }
@@ -136,18 +145,24 @@ export default function LoginPage() {
               <span>ResQConnect</span>
             </div>
           </Link>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">Disaster Response Coordination Platform</p>
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
+            Disaster Response Coordination Platform
+          </p>
         </div>
 
         <Card className="border-none shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
-            <CardDescription className="text-center">Enter your credentials to access the platform</CardDescription>
+            <CardDescription className="text-center">
+              Enter your credentials to access the platform
+            </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               {error && (
-                <div className="p-3 rounded-md bg-red-50 text-red-500 text-sm border border-red-200">{error}</div>
+                <div className="p-3 rounded-md bg-red-50 text-red-500 text-sm border border-red-200">
+                  {error}
+                </div>
               )}
 
               <div className="space-y-2">
@@ -187,7 +202,11 @@ export default function LoginPage() {
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -215,11 +234,16 @@ export default function LoginPage() {
       {showLocationPrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center px-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
-            <h2 className="text-xl font-semibold mb-4">Please share your location</h2>
+            <h2 className="text-xl font-semibold mb-4">
+              Please share your location
+            </h2>
             <p className="text-sm mb-4">
-              We need your current GPS location to proceed. This helps us route your request to nearby volunteers.
+              We need your current GPS location to proceed. This helps us route your
+              request to nearby volunteers.
             </p>
-            {locationError && <div className="text-red-600 text-sm mb-2">{locationError}</div>}
+            {locationError && (
+              <div className="text-red-600 text-sm mb-2">{locationError}</div>
+            )}
             <Button
               onClick={handleShareLocation}
               className="w-full mb-2"
@@ -230,7 +254,11 @@ export default function LoginPage() {
             <button
               onClick={() => {
                 setShowLocationPrompt(false);
-                router.push("/dashboard/affected_individual");
+                if (pendingRole) {
+                  router.push(`/dashboard/${pendingRole}`);
+                } else {
+                  router.push("/");
+                }
               }}
               className="text-sm text-gray-600 hover:underline"
             >

@@ -95,18 +95,17 @@ async def get_display_name(uid: str):
 @router.patch(
     "/me/location",
     response_model=User,
-    summary="Set or update your location (affected_individual users)",
+    summary="Set or update your location (affected_individual AND first_responder users)",
 )
 async def set_my_location(
-    coords: Coordinates,              
+    coords: Coordinates,
     current_user: User = Depends(get_current_user),
 ):
     
-   
-    if current_user.role_id != "affected_individual":
+    if current_user.role_id not in ("affected_individual", "first_responder"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only affected individuals may update location"
+            detail="Only affected individuals or first responders may update location"
         )
 
     update_user_location(current_user.uid, coords)
