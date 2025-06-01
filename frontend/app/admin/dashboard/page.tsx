@@ -1,84 +1,53 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebaseClient"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { RequestsOverview } from "@/components/dashboard/requests-overview"
-import { ResourcesOverview } from "@/components/dashboard/resources-overview"
+// import { ResourcesOverview } from "@/components/dashboard/resources-overview"
 import { MetricsDisplay } from "@/components/dashboard/metrics-display"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { AlertsPanel } from "@/components/dashboard/alerts-panel"
 import { UserStats } from "@/components/dashboard/user-stats"
-import { TasksOverview } from "@/components/dashboard/tasks-overview"
+// import { TasksOverview } from "@/components/dashboard/tasks-overview"
 import type { Disaster } from "@/lib/types"
 
 export default function AdminDashboardPage() {
+  const [disasters, setDisasters] = useState<Disaster[]>([])
   const [selectedDisaster, setSelectedDisaster] = useState<string>("all")
 
-  // Mock disasters - in a real app, this would come from an API
-  const mockDisasters: Disaster[] = [
-    {
-      id: "disaster-001",
-      name: "California Wildfire",
-      type: "Wildfire",
-      status: "Active",
-      description: "Rapidly spreading wildfire in Northern California affecting multiple counties.",
-      location: { latitude: 38.5816, longitude: -121.4944, address: "Sacramento, CA" },
-      affectedArea: { radius: 50 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-      severity: 4,
-      impactedPopulation: 25000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    },
-    {
-      id: "disaster-002",
-      name: "Hurricane Maria",
-      type: "Hurricane",
-      status: "Active",
-      description: "Category 3 hurricane approaching the Gulf Coast with heavy rainfall and strong winds.",
-      location: { latitude: 29.7604, longitude: -95.3698, address: "Houston, TX" },
-      affectedArea: { radius: 100 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1), // 1 day ago
-      severity: 5,
-      impactedPopulation: 50000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "disaster-003",
-      name: "Midwest Flooding",
-      type: "Flood",
-      status: "Active",
-      description: "Severe flooding along the Mississippi River affecting multiple states.",
-      location: { latitude: 38.627, longitude: -90.1994, address: "St. Louis, MO" },
-      affectedArea: { radius: 75 },
-      startDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-      severity: 3,
-      impactedPopulation: 15000,
-      createdBy: "admin-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    },
-  ]
+  useEffect(() => {
+    async function fetchDisasters() {
+      const snapshot = await getDocs(collection(db, "disasters"))
+      const result: Disaster[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Disaster, "id">),
+      }))
+      setDisasters(result)
+    }
 
-  // Get the selected disaster object
-  const currentDisaster = mockDisasters.find((d) => d.id === selectedDisaster)
+    fetchDisasters()
+  }, [])
+
+  const currentDisaster = disasters.find((d) => d.id === selectedDisaster)
 
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       <header>
         <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
           <div className="mb-6 ml-8 md:ml-0">
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200 md:text-3xl">Admin Dashboard</h1>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200 md:text-3xl">
+              Admin Dashboard
+            </h1>
             <p className="text-slate-600 dark:text-slate-400">
               {selectedDisaster === "all"
                 ? "Overview of all disaster response activities"
-                : `Overview of ${currentDisaster?.name} response activities`}
+                : `Overview of ${currentDisaster?.name || "Selected Disaster"} response activities`}
             </p>
           </div>
 
@@ -89,7 +58,7 @@ export default function AdminDashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Disasters</SelectItem>
-                {mockDisasters.map((disaster) => (
+                {disasters.map((disaster) => (
                   <SelectItem key={disaster.id} value={disaster.id}>
                     {disaster.name}
                   </SelectItem>
@@ -104,6 +73,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
+      {/* ... Keep rest of your dashboard cards and tabs unchanged ... */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
@@ -158,8 +128,8 @@ export default function AdminDashboardPage() {
             <Tabs defaultValue="requests">
               <TabsList className="mb-4 overflow-x-auto whitespace-nowrap">
                 <TabsTrigger value="requests">Requests</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="resources">Resources</TabsTrigger>
+                {/* <TabsTrigger value="tasks">Tasks</TabsTrigger> */}
+                {/* <TabsTrigger value="resources">Resources</TabsTrigger> */}
                 <TabsTrigger value="users">Users</TabsTrigger>
                 <TabsTrigger value="metrics">Metrics</TabsTrigger>
               </TabsList>
@@ -167,12 +137,12 @@ export default function AdminDashboardPage() {
                 <TabsContent value="requests">
                   <RequestsOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
                 </TabsContent>
-                <TabsContent value="tasks">
+                {/* <TabsContent value="tasks">
                   <TasksOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
-                </TabsContent>
-                <TabsContent value="resources">
+                </TabsContent> */}
+                {/* <TabsContent value="resources">
                   <ResourcesOverview disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
-                </TabsContent>
+                </TabsContent> */}
                 <TabsContent value="users">
                   <UserStats disasterId={selectedDisaster === "all" ? undefined : selectedDisaster} />
                 </TabsContent>
