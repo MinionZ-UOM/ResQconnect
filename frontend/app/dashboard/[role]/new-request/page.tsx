@@ -6,7 +6,6 @@ import type { Disaster, GeoLocation, RequestType, RequestPriority } from "@/lib/
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
 import { enqueueRequest } from "@/lib/offlineQueue";
-// — NEW: import speech‐to‐text util
 import { transcribeSpeech } from "@/lib/speechToText";
 
 interface MediaItem {
@@ -151,7 +150,7 @@ export default function NewRequestPage() {
     }
   };
 
-  // — NEW: Handle voice input
+  // Handle voice input
   const handleVoiceInput = async () => {
     setIsRecording(true);
     try {
@@ -403,7 +402,6 @@ export default function NewRequestPage() {
             {isSubmitting ? "Submitting…" : "Submit Request"}
           </button>
 
-          {/* — NEW: Mic icon button */}
           <button
             type="button"
             onClick={handleVoiceInput}
