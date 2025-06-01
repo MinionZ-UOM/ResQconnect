@@ -17,7 +17,7 @@ export default function Home() {
           <div className="flex flex-col items-center text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-blue-700 dark:text-blue-400 mb-4">ResQConnect</h1>
             <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 max-w-3xl">
-              AI-powered disaster response coordination platform for efficient resource allocation, Task Management and communication
+              AI-powered disaster response coordination platform for efficient resource allocation, task management and communication
             </p>
           </div>
         </header>
