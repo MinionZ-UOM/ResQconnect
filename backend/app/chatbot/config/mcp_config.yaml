@@ -1,0 +1,25 @@
+servers:
+  # math:
+  #   command: "python"
+  #   args: ["/app/chatbot2/mcp_servers/math.py"]
+  #   transport: "stdio"
+  # weather:
+  #   url: "http://localhost:8000/mcp"
+  #   transport: "streamable_http"
+  
+  # profile:
+  #   command: "python"
+  #   args: ["app/chatbot2/mcp_servers/profile.py"]
+  #   transport: "stdio"
+  
+  # profile:
+  #   url: http://localhost:4200/mcp
+  #   transport: "streamable_http"
+
+  db:
+    url: http://localhost:4201/mcp
+    transport: "streamable_http"
+
+  rag:
+    url: http://localhost:4202/mcp
+    transport: "streamable_http"

@@ -29,6 +29,7 @@ import {
   Package,
   Settings,
   Users,
+  Cpu,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/AuthProvider";
@@ -52,7 +53,7 @@ export function MainSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [notifications] = useState(3);
+  const [notifications] = useState();
 
   // derive the slug from backend key, e.g. "first_responder" → "first-responder"
   const backendKey = uiToBackend[userRole];
@@ -153,6 +154,7 @@ export function MainSidebar({
       },
       { title: "Tasks", href: "/admin/tasks", icon: CheckSquare },
       { title: "Resources", href: "/admin/resources", icon: Package },
+      { title: "Allocation Suggestions", href: "/admin/allocation-suggestions", icon: Cpu },
       { title: "Alerts", href: "/admin/alerts", icon: Bell },
     ],
   } as const;

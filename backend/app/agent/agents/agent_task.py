@@ -103,10 +103,11 @@ class AgentTask(BaseAgent):
             save_request_resources(req_id, entries)
 
             state.tasks = tasks
+            
             state.previous_action = Action.task_creation
             state.next_action = None
 
-            print("Tasks saved to DB:", state.tasks)
+            print("Tasks saved to DB:", saved)
 
             print("Tasks created successfully:", state.tasks)
             print("State request task creation:", state.request)
