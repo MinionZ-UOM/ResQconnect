@@ -5,6 +5,7 @@ import { Sidebar, SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import type { UserRole } from "@/lib/types"
 import { uiToBackend } from "@/lib/roles"
 import { notFound } from "next/navigation"
+import 'leaflet/dist/leaflet.css';
 
 interface DashboardLayoutProps {
   children: React.ReactNode

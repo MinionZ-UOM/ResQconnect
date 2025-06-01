@@ -1,5 +1,6 @@
-"use client"
+'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,8 +17,21 @@ interface MapPageProps {
   }
 }
 
-export default function MapPage({ params }: MapPageProps) {
-  const role = params.role
+// Dynamically import MapView so that it only ever loads client-side:
+const MapView = dynamic(
+  () => import("@/components/ui/map-view").then((mod) => mod.MapView),
+  {
+    ssr: false, // ← disables server-side rendering for this component
+    loading: () => (
+      <div className="h-full flex items-center justify-center">
+        Loading map…
+      </div>
+    ),
+  }
+);
+
+export default function MapPage({ params }: { params: { role: string } }) {
+  //const role = params.role
   const [mapLoaded, setMapLoaded] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Request | Resource | null>(null)
   const [filters, setFilters] = useState({
@@ -404,57 +418,11 @@ export default function MapPage({ params }: MapPageProps) {
                 <div className="relative h-full bg-slate-100 dark:bg-slate-800">
                   {/* This would be replaced with an actual map component */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <MapView />
+                    {/* <p className="text-slate-500 dark:text-slate-400">
                       Map would be displayed here with markers for requests and resources
-                    </p>
-                  </div>
-
-                  {/* Mock map markers */}
-                  {mockRequests.map((request) => (
-                    <button
-                      key={request.id}
-                      className="absolute p-1 rounded-full bg-white shadow-md border border-slate-200 transform -translate-x-1/2 -translate-y-1/2"
-                      style={{
-                        left: `${((request.location.longitude + 118.27) / 0.05) * 100}%`,
-                        top: `${((34.07 - request.location.latitude) / 0.05) * 100}%`,
-                      }}
-                      onClick={() => handleItemClick(request)}
-                    >
-                      <AlertTriangle
-                        className={`h-5 w-5 ${
-                          request.priority === "Critical"
-                            ? "text-red-500"
-                            : request.priority === "High"
-                              ? "text-orange-500"
-                              : request.priority === "Medium"
-                                ? "text-yellow-500"
-                                : "text-green-500"
-                        }`}
-                      />
-                    </button>
-                  ))}
-
-                  {mockResources.map((resource) => (
-                    <button
-                      key={resource.id}
-                      className="absolute p-1 rounded-full bg-white shadow-md border border-slate-200 transform -translate-x-1/2 -translate-y-1/2"
-                      style={{
-                        left: `${((resource.location!.longitude + 118.27) / 0.05) * 100}%`,
-                        top: `${((34.07 - resource.location!.latitude) / 0.05) * 100}%`,
-                      }}
-                      onClick={() => handleItemClick(resource)}
-                    >
-                      <Package
-                        className={`h-5 w-5 ${
-                          resource.status === "Available"
-                            ? "text-green-500"
-                            : resource.status === "InUse"
-                              ? "text-blue-500"
-                              : "text-slate-500"
-                        }`}
-                      />
-                    </button>
-                  ))}
+                    </p> */}
+                  </div>                  
                 </div>
               )}
             </CardContent>
