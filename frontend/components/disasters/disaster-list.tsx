@@ -1,3 +1,4 @@
+// File: /components/disasters/disaster-list.tsx
 "use client"
 
 import React, { useEffect, useState } from "react"
@@ -20,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { callApi } from "@/lib/api"
+import DisasterDetailModal, { Disaster as DisasterType } from "./DisasterDetailModal"
 
 export interface Disaster {
   id: string
@@ -41,20 +43,23 @@ interface DisasterListProps {
   role?: string // e.g. "first-responder"
 }
 
-
 export function DisasterList({ role = "default-role" }: DisasterListProps) {
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeDialogId, setActiveDialogId] = useState<string | null>(null)
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
+  const [selectedDisaster, setSelectedDisaster] = useState<DisasterType | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   // Convert slug → API role: "first-responder" → "first_responder"
   const apiRole = role.replace("-", "_")
 
   useEffect(() => {
     async function load() {
-      console.groupCollapsed(`[Disasters] Loading started at ${new Date().toISOString()}`)
+      console.groupCollapsed(
+        `[Disasters] Loading started at ${new Date().toISOString()}`
+      )
       try {
         // 1) Load all disasters
         console.log("Calling GET /api/disasters…")
@@ -100,8 +105,10 @@ export function DisasterList({ role = "default-role" }: DisasterListProps) {
         "POST",
         { role: apiRole }
       )
-      setJoinedIds(prev => new Set(prev).add(disasterId))
-      setDisasters(ds => ds.map(d => (d.id === disasterId ? updated : d)))
+      setJoinedIds((prev) => new Set(prev).add(disasterId))
+      setDisasters((ds) =>
+        ds.map((d) => (d.id === disasterId ? updated : d))
+      )
     } catch (e: any) {
       console.error("Join error:", e)
       alert("Could not join: " + e.message)
@@ -114,7 +121,7 @@ export function DisasterList({ role = "default-role" }: DisasterListProps) {
     try {
       // DELETE /api/disasters/{id}/leave
       await callApi<void>(`disasters/${disasterId}/leave`, "DELETE")
-      setJoinedIds(prev => {
+      setJoinedIds((prev) => {
         const next = new Set(prev)
         next.delete(disasterId)
         return next
@@ -131,85 +138,157 @@ export function DisasterList({ role = "default-role" }: DisasterListProps) {
   if (error) return <p className="text-red-500">Error: {error}</p>
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {disasters.map(d => {
-        const isJoined = joinedIds.has(d.id)
-        const hasImage = d.image_urls.length > 0
-        const imgSrc = hasImage ? d.image_urls[0] : "/placeholder.svg?height=300&width=600"
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {disasters.map((d) => {
+          const isJoined = joinedIds.has(d.id)
+          const hasImage = d.image_urls.length > 0
+          const imgSrc = hasImage
+            ? d.image_urls[0]
+            : "/placeholder.svg?height=300&width=600"
 
-        return (
-          <Card key={d.id} className="transition-shadow hover:shadow-lg overflow-hidden">
-            <div
-              className="h-48 bg-cover bg-center"
-              style={{ backgroundImage: `url('${imgSrc}')` }}
+          return (
+            <Card
+              key={d.id}
+              className="transition-shadow hover:shadow-lg overflow-hidden cursor-pointer"
+              onClick={() => {
+                setSelectedDisaster(d)
+                setDetailOpen(true)
+              }}
             >
-              <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white">{d.name}</h3>
+              <div
+                className="h-48 bg-cover bg-center"
+                style={{ backgroundImage: `url('${imgSrc}')` }}
+              >
+                <div className="h-full w-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{d.name}</h3>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <CardContent>
-              <CardDescription className="mt-2">{d.description}</CardDescription>
-            </CardContent>
+              <CardContent>
+                <CardDescription className="mt-2">
+                  {d.description}
+                </CardDescription>
+              </CardContent>
 
-            <CardFooter className="flex justify-end space-x-2">
-              {isJoined ? (
-                <Dialog
-                  open={activeDialogId === d.id}
-                  onOpenChange={open => setActiveDialogId(open ? d.id : null)}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="destructive" onClick={() => setActiveDialogId(d.id)}>
-                      Leave
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Confirm Leave</DialogTitle>
-                      <DialogDescription>
-                        Are you sure you want to leave this incident?
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setActiveDialogId(null)}>
-                        No
+              <CardFooter className="flex justify-end space-x-2">
+                {isJoined ? (
+                  <Dialog
+                    open={activeDialogId === d.id}
+                    onOpenChange={(open) =>
+                      setActiveDialogId(open ? d.id : null)
+                    }
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveDialogId(d.id)
+                        }}
+                      >
+                        Leave
                       </Button>
-                      <Button variant="destructive" onClick={() => handleLeave(d.id)}>
-                        Yes, Leave
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirm Leave</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to leave this incident?
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveDialogId(null)
+                          }}
+                        >
+                          No
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleLeave(d.id)
+                          }}
+                        >
+                          Yes, Leave
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Dialog
+                    open={activeDialogId === d.id}
+                    onOpenChange={(open) =>
+                      setActiveDialogId(open ? d.id : null)
+                    }
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveDialogId(d.id)
+                        }}
+                      >
+                        Join
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <Dialog
-                  open={activeDialogId === d.id}
-                  onOpenChange={open => setActiveDialogId(open ? d.id : null)}
-                >
-                  <DialogTrigger asChild>
-                    <Button onClick={() => setActiveDialogId(d.id)}>Join</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Confirm Association</DialogTitle>
-                      <DialogDescription>
-                        Are you associated with this incident?
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setActiveDialogId(null)}>
-                        No
-                      </Button>
-                      <Button onClick={() => handleJoin(d.id)}>Yes</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardFooter>
-          </Card>
-        )
-      })}
-    </div>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirm Association</DialogTitle>
+                        <DialogDescription>
+                          Are you associated with this incident?
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveDialogId(null)
+                          }}
+                        >
+                          No
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleJoin(d.id)
+                          }}
+                        >
+                          Yes
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </CardFooter>
+            </Card>
+          )
+        })}
+      </div>
+
+      {selectedDisaster && (
+        <DisasterDetailModal
+          disaster={selectedDisaster}
+          open={detailOpen}
+          onClose={() => {
+            setDetailOpen(false)
+            setSelectedDisaster(null)
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedDisaster(null)
+            }
+            setDetailOpen(open)
+          }}
+        />
+      )}
+    </>
   )
 }
