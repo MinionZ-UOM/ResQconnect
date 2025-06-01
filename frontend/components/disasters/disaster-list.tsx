@@ -32,6 +32,9 @@ export interface Disaster {
   created_at: string
   created_by: string
   chat_session_id: string
+  type?: string
+  severity?: string
+  affected_count?: number
 }
 
 // shape returned by GET /disasters/{id}/joined

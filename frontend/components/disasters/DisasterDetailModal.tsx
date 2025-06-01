@@ -10,7 +10,12 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
 
 export interface Disaster {
@@ -22,6 +27,9 @@ export interface Disaster {
   created_at: string
   created_by: string
   chat_session_id: string
+  type?: string
+  severity?: string
+  affected_count?: number
 }
 
 interface DisasterDetailModalProps {
@@ -40,7 +48,6 @@ export default function DisasterDetailModal({
   if (!disaster) return null
 
   const startedDate = new Date(disaster.created_at).toLocaleDateString()
-
   const imgSrc = disaster.image_urls.length
     ? disaster.image_urls[0]
     : "/placeholder.svg?height=300&width=600"
@@ -102,6 +109,28 @@ export default function DisasterDetailModal({
             <div>
               <h3 className="font-medium text-sm text-gray-600">Chat Session ID:</h3>
               <p className="text-gray-800">{disaster.chat_session_id}</p>
+            </div>
+
+            {/* Always render “Type:” but show “N/A” if undefined */}
+            <div>
+              <h3 className="font-medium text-sm text-gray-600">Type:</h3>
+              <p className="text-gray-800">{disaster.type ?? "N/A"}</p>
+            </div>
+
+            {/* Always render “Severity:” but show “N/A” if undefined */}
+            <div>
+              <h3 className="font-medium text-sm text-gray-600">Severity:</h3>
+              <p className="text-gray-800">{disaster.severity ?? "N/A"}</p>
+            </div>
+
+            {/* Always render “Affected Count:” but show “N/A” if undefined */}
+            <div>
+              <h3 className="font-medium text-sm text-gray-600">Affected Count:</h3>
+              <p className="text-gray-800">
+                {disaster.affected_count !== undefined
+                  ? disaster.affected_count
+                  : "N/A"}
+              </p>
             </div>
           </CardContent>
 
