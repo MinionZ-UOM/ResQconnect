@@ -119,7 +119,13 @@ export default function DisasterPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Confirmation states
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(
+    null
+  );
 
   // Load normal disasters
   const loadDisasters = async () => {
@@ -164,7 +170,6 @@ export default function DisasterPage() {
     try {
       await callApi(`disasters/${id}`, "DELETE");
     } catch (err: any) {
-      // If the error is JSON parse on empty body, treat as success
       if (err instanceof SyntaxError && /JSON/.test(err.message)) {
         console.warn("Delete returned no JSON, assuming success");
       } else {
@@ -176,9 +181,9 @@ export default function DisasterPage() {
 
   // Approve an agent-suggested disaster
   const handleApprove = async (id: string) => {
+    setConfirmApproveId(null);
     try {
       await callApi(`disasters/${id}/approve`, "POST");
-      // Refresh both lists
       await loadAgentDisasters();
       await loadDisasters();
     } catch (err) {
@@ -188,9 +193,9 @@ export default function DisasterPage() {
 
   // Discard an agent-suggested disaster
   const handleDiscard = async (id: string) => {
+    setConfirmDiscardId(null);
     try {
       await callApi(`disasters/${id}/discard`, "DELETE");
-      // Refresh both lists
       await loadAgentDisasters();
       await loadDisasters();
     } catch (err) {
@@ -361,14 +366,14 @@ export default function DisasterPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleApprove(d.id)}
+                          onClick={() => setConfirmApproveId(d.id)}
                         >
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleDiscard(d.id)}
+                          onClick={() => setConfirmDiscardId(d.id)}
                         >
                           Discard
                         </Button>
@@ -379,6 +384,64 @@ export default function DisasterPage() {
               })}
             </div>
           )}
+
+          {/* Confirm Approve Modal */}
+          <Modal
+            open={confirmApproveId !== null}
+            onClose={() => setConfirmApproveId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Confirm Approve</h3>
+              <p className="mb-6">
+                Are you sure you want to approve this disaster?
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmApproveId && handleApprove(confirmApproveId)
+                  }
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg"
+                >
+                  Yes, approve
+                </button>
+                <button
+                  onClick={() => setConfirmApproveId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Confirm Discard Modal */}
+          <Modal
+            open={confirmDiscardId !== null}
+            onClose={() => setConfirmDiscardId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Confirm Discard</h3>
+              <p className="mb-6">
+                Are you sure you want to discard (delete) this disaster?
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmDiscardId && handleDiscard(confirmDiscardId)
+                  }
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                >
+                  Yes, discard
+                </button>
+                <button
+                  onClick={() => setConfirmDiscardId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
         </section>
       ) : (
         <section>
@@ -432,6 +495,33 @@ export default function DisasterPage() {
               })}
             </div>
           )}
+
+          {/* Confirm Delete Modal for All Disasters */}
+          <Modal
+            open={confirmDeleteId !== null}
+            onClose={() => setConfirmDeleteId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
+              <p className="mb-6">This will permanently delete the incident.</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmDeleteId && handleDelete(confirmDeleteId)
+                  }
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
         </section>
       )}
 
@@ -587,29 +677,6 @@ export default function DisasterPage() {
             </button>
           </div>
         </form>
-      </Modal>
-
-      <Modal open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
-          <p className="mb-6">This will permanently delete the incident.</p>
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={() => {
-                if (confirmDeleteId) handleDelete(confirmDeleteId);
-              }}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg"
-            >
-              Yes, delete
-            </button>
-            <button
-              onClick={() => setConfirmDeleteId(null)}
-              className="px-6 py-2 border rounded-lg"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
       </Modal>
     </div>
   );
