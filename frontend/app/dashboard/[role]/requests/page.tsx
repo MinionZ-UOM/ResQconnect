@@ -64,7 +64,16 @@ interface Request extends Omit<BackendRequest, "type_of_need" | "status"> {
   status: RequestStatus
 }
 
+// Minimal User type for /users/me response
+interface User {
+  id: string
+  role_id: string
+}
+
 export default function AdminRequestsPage() {
+  // Current user
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
   // Filters
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [selectedDisaster, setSelectedDisaster] = useState<string>("")
@@ -92,11 +101,25 @@ export default function AdminRequestsPage() {
   const [editType, setEditType] = useState<RequestType | "">("")
   const [editPriority, setEditPriority] = useState<RequestPriority | "">("")
 
+  // Load current user on mount
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const user = await callApi<User>("users/me", "GET")
+        setCurrentUser(user)
+      } catch {
+        console.error("Failed to load current user")
+      }
+    }
+    loadUser()
+  }, [])
+
   // Load disasters and set default selection
   useEffect(() => {
     async function loadDisasters() {
       try {
         const data = await callApi<Disaster[]>("disasters/", "GET")
+        console.log("Loaded disasters:", data)
         setDisasters(data)
         if (data.length > 0) {
           setSelectedDisaster(data[0].id)
@@ -108,16 +131,25 @@ export default function AdminRequestsPage() {
     loadDisasters()
   }, [])
 
-  // Fetch requests for selected disaster
+  // Fetch requests for selected disaster, filtering by user if needed
   const fetchRequests = useCallback(async () => {
-    if (!selectedDisaster) return
+    if (!selectedDisaster || !currentUser) return
+
     setLoading(true)
     setError(null)
     try {
       const endpoint = `requests/disaster/${selectedDisaster}`
       const data = await callApi<BackendRequest[]>(endpoint, "GET")
+      console.log("Loaded requests:", data)
+
+      // If user is an affected individual, only keep requests created by them
+      let filteredData: BackendRequest[] = data
+      if (currentUser.role_id === "affected_individual") {
+        filteredData = data.filter((r) => r.created_by === currentUser.id)
+      }
+
       setRequests(
-        data.map((r) => ({
+        filteredData.map((r) => ({
           ...r,
           type: r.type_of_need as RequestType,
           status: r.status as RequestStatus,
@@ -128,8 +160,9 @@ export default function AdminRequestsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDisaster])
+  }, [selectedDisaster, currentUser])
 
+  // Trigger fetch when disaster or user changes
   useEffect(() => {
     fetchRequests()
   }, [fetchRequests])
@@ -286,7 +319,7 @@ export default function AdminRequestsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Status</TableHead>
@@ -304,7 +337,7 @@ export default function AdminRequestsPage() {
                 )}
                 {filtered.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.id}</TableCell>
+                    <TableCell className="font-medium">{r.type_of_need}</TableCell>
                     <TableCell><Badge variant="outline">{r.type}</Badge></TableCell>
                     <TableCell>{r.title}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
@@ -324,10 +357,7 @@ export default function AdminRequestsPage() {
                         <Button size="sm" variant="outline" onClick={() => openDialog("chat", r)}>
                           <MessageSquare className="h-4 w-4"/>
                         </Button>
-                        {[
-                          "open",
-                          "Assigned",
-                        ].includes(r.status) && (
+                        {["open", "Assigned"].includes(r.status) && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => openDialog("edit", r)}>
                               <Edit className="h-4 w-4"/>
@@ -347,7 +377,131 @@ export default function AdminRequestsPage() {
         </CardContent>
       </Card>
 
-      {/* Dialogs (Details, Edit, Cancel) remain unchanged */}
+      {/* Dialogs (Details, Edit, Cancel, Chat) remain unchanged */}
+      <Dialog open={dialogs.details} onOpenChange={() => closeDialog("details")}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Details</DialogTitle>
+            <DialogDescription>
+              {selectedRequest && (
+                <>
+                  <p><strong>Title:</strong> {selectedRequest.title}</p>
+                  <p><strong>Description:</strong> {selectedRequest.description}</p>
+                  <p><strong>Type:</strong> {selectedRequest.type}</p>
+                  <p><strong>Priority:</strong> {getPriorityBadge(selectedRequest.priority)}</p>
+                  <p><strong>Status:</strong> {getStatusBadge(selectedRequest.status)}</p>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => closeDialog("details")}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogs.edit} onOpenChange={() => closeDialog("edit")}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Request</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <input
+                  id="edit-title"
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="mt-1 w-full border rounded px-2 py-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <textarea
+                  id="edit-description"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="mt-1 w-full border rounded px-2 py-1"
+                />
+              </div>
+              <div>
+                <Label>Type</Label>
+                <Select value={editType} onValueChange={(v) => setEditType(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Medical">Medical</SelectItem>
+                    <SelectItem value="Food">Food</SelectItem>
+                    <SelectItem value="Shelter">Shelter</SelectItem>
+                    <SelectItem value="Evacuation">Evacuation</SelectItem>
+                    <SelectItem value="Rescue">Rescue</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Priority</Label>
+                <Select value={editPriority} onValueChange={(v) => setEditPriority(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Critical">Critical</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </DialogDescription>
+          <DialogFooter className="space-x-2">
+            <Button variant="outline" onClick={() => closeDialog("edit")}>Cancel</Button>
+            <Button onClick={submitEdit}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogs.cancel} onOpenChange={() => closeDialog("cancel")}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this request?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="space-x-2">
+            <Button variant="outline" onClick={() => closeDialog("cancel")}>No</Button>
+            <Button className="text-red-500" onClick={submitCancel}>Yes, Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogs.chat} onOpenChange={() => closeDialog("chat")}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Request Chat</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            {selectedRequest && (
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                </TabsList>
+                <TabsContent value="details" className="space-y-4">
+                  <p><strong>Title:</strong> {selectedRequest.title}</p>
+                  <p><strong>Description:</strong> {selectedRequest.description}</p>
+                  <p><strong>Type:</strong> {selectedRequest.type}</p>
+                  <p><strong>Priority:</strong> {getPriorityBadge(selectedRequest.priority)}</p>
+                  <p><strong>Status:</strong> {getStatusBadge(selectedRequest.status)}</p>
+                </TabsContent>
+                <TabsContent value="chat">
+                  <ChatInterface requestId={selectedRequest.id} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
