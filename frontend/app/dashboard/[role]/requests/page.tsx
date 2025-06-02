@@ -64,14 +64,15 @@ interface Request extends Omit<BackendRequest, "type_of_need" | "status"> {
   status: RequestStatus
 }
 
-// Minimal User type for /users/me response
+// Use "uid" instead of "id" for current user
 interface User {
-  id: string
+  uid: string
   role_id: string
 }
 
 export default function AdminRequestsPage() {
-  // Current user
+  // Track whether /users/me is still in flight
+  const [userLoading, setUserLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   // Filters
@@ -106,9 +107,12 @@ export default function AdminRequestsPage() {
     async function loadUser() {
       try {
         const user = await callApi<User>("users/me", "GET")
+        console.log("me →", user)
         setCurrentUser(user)
       } catch {
         console.error("Failed to load current user")
+      } finally {
+        setUserLoading(false)
       }
     }
     loadUser()
@@ -133,20 +137,28 @@ export default function AdminRequestsPage() {
 
   // Fetch requests for selected disaster, filtering by user if needed
   const fetchRequests = useCallback(async () => {
-    if (!selectedDisaster || !currentUser) return
+    // If we haven’t finished loading /users/me yet, bail out
+    if (userLoading) return
+    if (!selectedDisaster) return
 
     setLoading(true)
     setError(null)
     try {
       const endpoint = `requests/disaster/${selectedDisaster}`
       const data = await callApi<BackendRequest[]>(endpoint, "GET")
-      console.log("Loaded requests:", data)
+      console.log("all requests →", data)
 
-      // If user is an affected individual, only keep requests created by them
       let filteredData: BackendRequest[] = data
-      if (currentUser.role_id === "affected_individual") {
-        filteredData = data.filter((r) => r.created_by === currentUser.id)
+
+      // Only apply “my-requests” filter if the role is EXACTLY "affected_individual"
+      if (
+        currentUser &&
+        currentUser.role_id === "affected_individual"
+      ) {
+        filteredData = data.filter((r) => r.created_by === currentUser.uid)
       }
+
+      console.log("filtered as:", filteredData)
 
       setRequests(
         filteredData.map((r) => ({
@@ -160,7 +172,7 @@ export default function AdminRequestsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDisaster, currentUser])
+  }, [selectedDisaster, currentUser, userLoading])
 
   // Trigger fetch when disaster or user changes
   useEffect(() => {
@@ -242,6 +254,15 @@ export default function AdminRequestsPage() {
       Cancelled:  <Badge variant="outline" className="text-red-500">Cancelled</Badge>,
     }[s] || <Badge>{s}</Badge>)
 
+  // If the user is still loading, show a placeholder
+  if (userLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <p>Loading user…</p>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       {/* Header */}
@@ -263,8 +284,10 @@ export default function AdminRequestsPage() {
               <Select value={selectedDisaster} onValueChange={setSelectedDisaster}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {disasters.map(d => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  {disasters.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -272,8 +295,13 @@ export default function AdminRequestsPage() {
             {/* Type */}
             <div>
               <Label>Type</Label>
-              <Select value={typeFilter} onValueChange={v => setTypeFilter(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={typeFilter}
+                onValueChange={(v) => setTypeFilter(v as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Types</SelectItem>
                   <SelectItem value="Medical">Medical</SelectItem>
@@ -288,8 +316,13 @@ export default function AdminRequestsPage() {
             {/* Status */}
             <div>
               <Label>Status</Label>
-              <Select value={statusFilter} onValueChange={v => setStatusFilter(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="All">All Statuses</SelectItem>
                   <SelectItem value="open">Open</SelectItem>
@@ -309,7 +342,7 @@ export default function AdminRequestsPage() {
         <CardHeader>
           <CardTitle>All Requests</CardTitle>
           <CardDescription>
-            {loading ? "Loading…" : error ?? `${filtered.length} found`}          
+            {loading ? "Loading…" : error ?? `${filtered.length} found`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -337,8 +370,10 @@ export default function AdminRequestsPage() {
                 )}
                 {filtered.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.type_of_need}</TableCell>
-                    <TableCell><Badge variant="outline">{r.type}</Badge></TableCell>
+                    <TableCell className="font-medium">{r.id}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{r.type}</Badge>
+                    </TableCell>
                     <TableCell>{r.title}</TableCell>
                     <TableCell>{getStatusBadge(r.status)}</TableCell>
                     <TableCell>
@@ -351,19 +386,36 @@ export default function AdminRequestsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openDialog("details", r)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDialog("details", r)}
+                        >
                           View
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => openDialog("chat", r)}>
-                          <MessageSquare className="h-4 w-4"/>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDialog("chat", r)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
                         {["open", "Assigned"].includes(r.status) && (
                           <>
-                            <Button size="sm" variant="outline" onClick={() => openDialog("edit", r)}>
-                              <Edit className="h-4 w-4"/>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDialog("edit", r)}
+                            >
+                              <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-500" onClick={() => openDialog("cancel", r)}>
-                              <Trash className="h-4 w-4"/>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-500"
+                              onClick={() => openDialog("cancel", r)}
+                            >
+                              <Trash className="h-4 w-4" />
                             </Button>
                           </>
                         )}
@@ -378,18 +430,33 @@ export default function AdminRequestsPage() {
       </Card>
 
       {/* Dialogs (Details, Edit, Cancel, Chat) remain unchanged */}
-      <Dialog open={dialogs.details} onOpenChange={() => closeDialog("details")}>
+      <Dialog
+        open={dialogs.details}
+        onOpenChange={() => closeDialog("details")}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Request Details</DialogTitle>
             <DialogDescription>
               {selectedRequest && (
                 <>
-                  <p><strong>Title:</strong> {selectedRequest.title}</p>
-                  <p><strong>Description:</strong> {selectedRequest.description}</p>
-                  <p><strong>Type:</strong> {selectedRequest.type}</p>
-                  <p><strong>Priority:</strong> {getPriorityBadge(selectedRequest.priority)}</p>
-                  <p><strong>Status:</strong> {getStatusBadge(selectedRequest.status)}</p>
+                  <p>
+                    <strong>Title:</strong> {selectedRequest.title}
+                  </p>
+                  <p>
+                    <strong>Description:</strong> {selectedRequest.description}
+                  </p>
+                  <p>
+                    <strong>Type:</strong> {selectedRequest.type}
+                  </p>
+                  <p>
+                    <strong>Priority:</strong>{" "}
+                    {getPriorityBadge(selectedRequest.priority)}
+                  </p>
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    {getStatusBadge(selectedRequest.status)}
+                  </p>
                 </>
               )}
             </DialogDescription>
@@ -428,8 +495,13 @@ export default function AdminRequestsPage() {
               </div>
               <div>
                 <Label>Type</Label>
-                <Select value={editType} onValueChange={(v) => setEditType(v as any)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={editType}
+                  onValueChange={(v) => setEditType(v as any)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Medical">Medical</SelectItem>
                     <SelectItem value="Food">Food</SelectItem>
@@ -442,8 +514,13 @@ export default function AdminRequestsPage() {
               </div>
               <div>
                 <Label>Priority</Label>
-                <Select value={editPriority} onValueChange={(v) => setEditPriority(v as any)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={editPriority}
+                  onValueChange={(v) => setEditPriority(v as any)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Critical">Critical</SelectItem>
                     <SelectItem value="High">High</SelectItem>
@@ -455,7 +532,9 @@ export default function AdminRequestsPage() {
             </div>
           </DialogDescription>
           <DialogFooter className="space-x-2">
-            <Button variant="outline" onClick={() => closeDialog("edit")}>Cancel</Button>
+            <Button variant="outline" onClick={() => closeDialog("edit")}>
+              Cancel
+            </Button>
             <Button onClick={submitEdit}>Save</Button>
           </DialogFooter>
         </DialogContent>
@@ -470,8 +549,12 @@ export default function AdminRequestsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="space-x-2">
-            <Button variant="outline" onClick={() => closeDialog("cancel")}>No</Button>
-            <Button className="text-red-500" onClick={submitCancel}>Yes, Cancel</Button>
+            <Button variant="outline" onClick={() => closeDialog("cancel")}>
+              No
+            </Button>
+            <Button className="text-red-500" onClick={submitCancel}>
+              Yes, Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -488,11 +571,23 @@ export default function AdminRequestsPage() {
                   <TabsTrigger value="details">Details</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4">
-                  <p><strong>Title:</strong> {selectedRequest.title}</p>
-                  <p><strong>Description:</strong> {selectedRequest.description}</p>
-                  <p><strong>Type:</strong> {selectedRequest.type}</p>
-                  <p><strong>Priority:</strong> {getPriorityBadge(selectedRequest.priority)}</p>
-                  <p><strong>Status:</strong> {getStatusBadge(selectedRequest.status)}</p>
+                  <p>
+                    <strong>Title:</strong> {selectedRequest.title}
+                  </p>
+                  <p>
+                    <strong>Description:</strong> {selectedRequest.description}
+                  </p>
+                  <p>
+                    <strong>Type:</strong> {selectedRequest.type}
+                  </p>
+                  <p>
+                    <strong>Priority:</strong>{" "}
+                    {getPriorityBadge(selectedRequest.priority)}
+                  </p>
+                  <p>
+                    <strong>Status:</strong>{" "}
+                    {getStatusBadge(selectedRequest.status)}
+                  </p>
                 </TabsContent>
                 <TabsContent value="chat">
                   <ChatInterface requestId={selectedRequest.id} />
