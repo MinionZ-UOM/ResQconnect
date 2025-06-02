@@ -8,7 +8,11 @@ from app.core.permissions import require_perms as check_permission
 from app.crud import disaster as crud
 from app.schemas.disaster import JoinedResponse
 from app.crud.disaster import get_all_volunteers_by_disaster
-from app.crud.disaster import list_agent_suggested_disasters
+from app.crud.disaster import (
+    list_agent_suggested_disasters,
+    approve_disaster,
+    discard_disaster,
+)
 from app.schemas.user import User
 
 from app.utils.logger import get_logger
@@ -162,3 +166,50 @@ def list_volunteers(disaster_id: str):
     # Return only display names (all non-null)
     logger.debug(vols)
     return [v["display_name"] for v in vols]
+
+
+@router.post(
+    "/{disaster_id}/approve",
+    response_model=DisasterResponse,
+    summary="Approve an agent-suggested disaster",
+)
+def post_approve_disaster(disaster_id: str):
+    """
+    Approve a Disaster that was suggested by the agent.
+    Sets `is_agent_suggestion = False`. Returns the updated Disaster.
+    """
+    try:
+        updated = approve_disaster(disaster_id)
+        if updated is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disaster {disaster_id} not found",
+            )
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete(
+    "/{disaster_id}/discard",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Discard (delete) an agent-suggested disaster",
+)
+def delete_discard_disaster(disaster_id: str):
+    """
+    Delete a Disaster that was suggested by the agent.
+    """
+    try:
+        success = discard_disaster(disaster_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disaster {disaster_id} not found",
+            )
+        return
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

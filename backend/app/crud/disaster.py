@@ -257,3 +257,33 @@ def get_disaster_locations() -> List[dict]:
             "location": data.get("location")
         })
     return locations_list
+
+
+def approve_disaster(disaster_id: str) -> Optional[DisasterResponse]:
+    """
+    Mark an agent-suggested Disaster as approved by setting is_agent_suggestion=False.
+    Returns the updated DisasterResponse, or None if not found.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        return None
+
+    # Update the flag
+    doc_ref.update({"is_agent_suggestion": False})
+    updated = doc_ref.get().to_dict()
+    return DisasterResponse(id=disaster_id, **updated)
+
+
+def discard_disaster(disaster_id: str) -> bool:
+    """
+    Discard (delete) an agent-suggested Disaster.
+    Returns True if deletion succeeded, False if document did not exist.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        return False
+
+    doc_ref.delete()
+    return True
