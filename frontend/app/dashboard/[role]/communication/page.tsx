@@ -12,7 +12,7 @@ import {
   doc as firestoreDoc,
   getDoc,
 } from "firebase/firestore"
-import { onAuthStateChanged, User } from "firebase/auth"
+import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth"
 import { auth, db } from "@/lib/firebaseClient"
 import { callApi } from "@/lib/api"
 
@@ -39,6 +39,12 @@ interface Message {
   trace_id?: string
 }
 
+interface ApiUser {
+  id: string
+  display_name: string
+  role_id: string
+}
+
 export default function CommunicationPage({
   params,
 }: {
@@ -46,7 +52,8 @@ export default function CommunicationPage({
 }) {
   const { role } = params
 
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null)
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
+  const [profile, setProfile] = useState<ApiUser | null>(null)
   const [disasters, setDisasters] = useState<Disaster[]>([])
   const [active, setActive] = useState<Disaster | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -56,6 +63,7 @@ export default function CommunicationPage({
   const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set())
   const endRef = useRef<HTMLDivElement>(null)
 
+  // Watch Firebase auth state
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
       setFirebaseUser(u)
@@ -64,11 +72,29 @@ export default function CommunicationPage({
         setActive(null)
         setMessages([])
         setUserCache({})
+        setProfile(null)
       }
     })
     return () => unsubAuth()
   }, [])
 
+  // Fetch users/me endpoint once we have a firebaseUser
+  useEffect(() => {
+    if (!firebaseUser) return
+
+    const fetchProfile = async () => {
+      try {
+        const res = await callApi<ApiUser>("users/me", "GET", undefined)
+        setProfile(res)
+      } catch (e) {
+        console.error("Failed to fetch profile:", e)
+      }
+    }
+
+    fetchProfile()
+  }, [firebaseUser])
+
+  // Fetch disasters list
   useEffect(() => {
     if (!firebaseUser) return
 
@@ -90,6 +116,7 @@ export default function CommunicationPage({
     return () => unsub()
   }, [firebaseUser, role])
 
+  // Fetch messages for the active disaster
   useEffect(() => {
     if (!active || active.id === "resqbot") {
       setMessages([])
@@ -114,6 +141,7 @@ export default function CommunicationPage({
     return () => unsub()
   }, [active])
 
+  // Cache display names for message senders
   useEffect(() => {
     const missing = Array.from(new Set(messages.map((m) => m.sender_id)))
       .filter((uid) => uid !== "ai-assistant" && !(uid in userCache))
@@ -131,6 +159,7 @@ export default function CommunicationPage({
     })
   }, [messages, userCache])
 
+  // Send a regular chat message to Firebase
   const sendToChat = async () => {
     if (!text.trim() || !active || !firebaseUser) return
     const col = collection(
@@ -147,8 +176,9 @@ export default function CommunicationPage({
     setText("")
   }
 
+  // Send a message to the AI bot, using dynamic profile fields
   const sendToBot = async () => {
-    if (!text.trim() || !firebaseUser) return
+    if (!text.trim() || !firebaseUser || !profile) return
 
     const now = Date.now()
     const userMsg: Message = {
@@ -165,8 +195,8 @@ export default function CommunicationPage({
     const body = {
       user: {
         id: firebaseUser.uid,
-        name: "Chemini",
-        role: "affected_individual",
+        name: profile.display_name,
+        role: profile.role_id,
         location: {
           latitude: 8.23,
           longitude: 72.08,
@@ -421,6 +451,7 @@ export default function CommunicationPage({
                                     >
                                       <Button
                                         size="sm"
+                                        variant="outline"
                                         onClick={() =>
                                           handleScore(m.trace_id || "", 1)
                                         }
@@ -429,6 +460,7 @@ export default function CommunicationPage({
                                       </Button>
                                       <Button
                                         size="sm"
+                                        variant="outline"
                                         onClick={() =>
                                           handleScore(m.trace_id || "", 0)
                                         }
