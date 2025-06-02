@@ -64,6 +64,21 @@ def list_disasters() -> List[DisasterResponse]:
     return results
 
 
+def list_agent_suggested_disasters() -> List[DisasterResponse]:
+    """
+    Return only those Disaster documents where is_agent_suggestion == True.
+    """
+    docs = db.collection("disasters").stream()
+    results: List[DisasterResponse] = []
+
+    for d in docs:
+        data = d.to_dict()
+        if data.get("is_agent_suggestion", False):
+            results.append(DisasterResponse(id=d.id, **data))
+
+    return results
+
+
 def get_disaster(disaster_id: str) -> Optional[DisasterResponse]:
     doc_ref = db.collection("disasters").document(disaster_id)
     snap = doc_ref.get()
