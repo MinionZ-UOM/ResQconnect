@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState, useEffect } from "react";
+import React, { use, useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -124,10 +124,19 @@ export default function MapPage({ params }: MapPageProps) {
     })();
   }, []);
 
+  // ─── Compute grouped counts by resource type ───
+  const resourceGroups = useMemo(() => {
+    const counts: Record<string, number> = {};
+    resources.forEach((r) => {
+      counts[r.type] = (counts[r.type] || 0) + 1;
+    });
+    return Object.entries(counts).map(([type, count]) => ({ type, count }));
+  }, [resources]);
+
   // ─── Dropdown selections ───
   const [selectedDisasterId, setSelectedDisasterId] = useState<string>("");
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
-  const [selectedResourceId, setSelectedResourceId] = useState<string>("");
+  const [selectedResourceType, setSelectedResourceType] = useState<string>("");
 
   // ─── Simulate map loading ───
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -143,7 +152,7 @@ export default function MapPage({ params }: MapPageProps) {
           Map View
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Select a Disaster, Request, or Resource to highlight its marker on the map
+          Select a Disaster, Request, or Resource Type to highlight on the map
         </p>
       </header>
 
@@ -202,23 +211,23 @@ export default function MapPage({ params }: MapPageProps) {
             </CardContent>
           </Card>
 
-          {/* ── Resources Dropdown ── */}
+          {/* ── Resources (Grouped by Type) Dropdown ── */}
           <Card>
             <CardHeader>
               <CardTitle>Resources</CardTitle>
             </CardHeader>
             <CardContent>
               <Select
-                value={selectedResourceId}
-                onValueChange={(val) => setSelectedResourceId(val)}
+                value={selectedResourceType}
+                onValueChange={(val) => setSelectedResourceType(val)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a Resource" />
+                  <SelectValue placeholder="Select a Resource Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {resources.map((res) => (
-                    <SelectItem key={res.id} value={res.id}>
-                      {res.name}
+                  {resourceGroups.map(({ type, count }) => (
+                    <SelectItem key={type} value={type}>
+                      {`${type} (${count})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -238,14 +247,14 @@ export default function MapPage({ params }: MapPageProps) {
               ) : (
                 <div className="relative h-full bg-slate-100 dark:bg-slate-800">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    {/* Pass the fetched disasters + mock requests & fetched resources to MapView */}
+                    {/* Pass the fetched disasters, mock requests, and fetched resources to MapView */}
                     <MapView
                       disasters={disasters}
                       requests={requests}
                       resources={resources}
                       selectedDisasterId={selectedDisasterId}
                       selectedRequestId={selectedRequestId}
-                      selectedResourceId={selectedResourceId}
+                      selectedResourceId={selectedResourceType}
                     />
                   </div>
                 </div>
