@@ -19,7 +19,7 @@ export function transcribeSpeech(): Promise<string> {
     };
 
     recognition.onerror = (event: any) => {
-      reject(event.error);
+      reject(new Error(event.error));
     };
 
     recognition.start();
