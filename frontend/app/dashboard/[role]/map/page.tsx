@@ -38,7 +38,26 @@ export default function MapPage({ params }: MapPageProps) {
   const [disasters, setDisasters] = useState<DisasterLocation[]>([]);
   const [isLoadingDisasters, setIsLoadingDisasters] = useState(true);
 
-  // ─── Still‐mocking “requests” + “resources” for now ───
+  // ─── Fetch real disasters from /api/location ───
+  useEffect(() => {
+    (async () => {
+      try {
+        setIsLoadingDisasters(true);
+        const data = await callApi<DisasterLocation[]>("disasters/location");
+
+        console.log("Fetched disaster locations:", data);
+
+        // API returns [{ id, name, location: { lat, lng } }, …]
+        setDisasters(data);
+      } catch (err) {
+        console.error("Failed to fetch disaster locations:", err);
+      } finally {
+        setIsLoadingDisasters(false);
+      }
+    })();
+  }, []);
+
+  // ─── Requests (still mocked for now) ───
   const [requests] = useState<Request[]>([
     {
       id: "REQ-001",
@@ -67,28 +86,43 @@ export default function MapPage({ params }: MapPageProps) {
     },
   ]);
 
-  const [resources] = useState<Resource[]>([
-    {
-      id: "RES-001",
-      name: "Ambulance",
-      type: "Vehicle",
-      status: "Available",
-      quantity: 1,
-      location: { latitude: 7.87, longitude: 80.79, address: "National Hospital" },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    {
-      id: "RES-002",
-      name: "Medical Supplies",
-      type: "Medical",
-      status: "Available",
-      quantity: 20,
-      location: { latitude: 7.86, longitude: 80.75, address: "Pharmacy Depot" },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ]);
+  // ─── Fetch real resources from /api/resources/locations ───
+  const [resources, setResources] = useState<Resource[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        // This returns an array of { resource_id, status, category, location: { lat, lng } }
+        const data = await callApi<
+          {
+            resource_id: string;
+            status: string;
+            category: string;
+            location: { lat: number; lng: number };
+          }[]
+        >("resources/locations");
+
+        // Transform into your Resource type (only the fields MapView needs):
+        const mapped = data.map((r) => ({
+          id: r.resource_id,
+          name: r.category,           // use category as “name”
+          type: r.category,           // also put category into “type”
+          status: r.status,
+          quantity: undefined,        // (MapView never reads quantity)
+          location: {
+            latitude: r.location.lat,
+            longitude: r.location.lng,
+            address: "",              // (address isn’t provided by this endpoint)
+          },
+          createdAt: new Date(),      // dummy dates—MapView doesn’t need them
+          updatedAt: new Date(),
+        }));
+
+        setResources(mapped);
+      } catch (err) {
+        console.error("Failed to fetch resource locations:", err);
+      }
+    })();
+  }, []);
 
   // ─── Dropdown selections ───
   const [selectedDisasterId, setSelectedDisasterId] = useState<string>("");
@@ -100,25 +134,6 @@ export default function MapPage({ params }: MapPageProps) {
   useEffect(() => {
     const timer = setTimeout(() => setMapLoaded(true), 1000);
     return () => clearTimeout(timer);
-  }, []);
-
-  // ─── Fetch real disasters from /api/location ───
-  useEffect(() => {
-    (async () => {
-      try {
-        setIsLoadingDisasters(true);
-        const data = await callApi<DisasterLocation[]>("disasters/location");
-
-        console.log("Fetched disaster locations:", data);
-        
-        // API returns [{ id, name, location: { lat, lng } }, …]
-        setDisasters(data);
-      } catch (err) {
-        console.error("Failed to fetch disaster locations:", err);
-      } finally {
-        setIsLoadingDisasters(false);
-      }
-    })();
   }, []);
 
   return (
@@ -223,7 +238,7 @@ export default function MapPage({ params }: MapPageProps) {
               ) : (
                 <div className="relative h-full bg-slate-100 dark:bg-slate-800">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    {/* Pass the fetched disasters + mock requests & resources to MapView */}
+                    {/* Pass the fetched disasters + mock requests & fetched resources to MapView */}
                     <MapView
                       disasters={disasters}
                       requests={requests}
