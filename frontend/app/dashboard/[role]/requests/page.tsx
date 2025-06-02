@@ -370,7 +370,7 @@ export default function AdminRequestsPage() {
                 )}
                 {filtered.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.id}</TableCell>
+                    <TableCell className="font-medium">{r.description}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{r.type}</Badge>
                     </TableCell>
