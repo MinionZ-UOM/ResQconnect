@@ -44,10 +44,6 @@ export default function MapPage({ params }: MapPageProps) {
       try {
         setIsLoadingDisasters(true);
         const data = await callApi<DisasterLocation[]>("disasters/location");
-
-        console.log("Fetched disaster locations:", data);
-
-        // API returns [{ id, name, location: { lat, lng } }, …]
         setDisasters(data);
       } catch (err) {
         console.error("Failed to fetch disaster locations:", err);
@@ -57,41 +53,65 @@ export default function MapPage({ params }: MapPageProps) {
     })();
   }, []);
 
-  // ─── Requests (still mocked for now) ───
-  const [requests] = useState<Request[]>([
-    {
-      id: "REQ-001",
-      title: "Medical assistance needed",
-      description: "Elderly person with diabetes needs insulin",
-      type: "Medical",
-      status: "New",
-      priority: "High",
-      location: { latitude: 7.87, longitude: 80.77, address: "Pokunuwita Rd, Colombo" },
-      createdBy: "user-001",
-      createdAt: new Date(Date.now() - 1000 * 60 * 30),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-    },
-    {
-      id: "REQ-002",
-      title: "Food supplies for shelter",
-      description: "Need food supplies for 50 people at community shelter",
-      type: "Food",
-      status: "Assigned",
-      priority: "Medium",
-      location: { latitude: 7.88, longitude: 80.76, address: "Galle Rd, Colombo" },
-      createdBy: "user-002",
-      assignedTo: "user-102",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60),
-      updatedAt: new Date(Date.now() - 1000 * 60 * 45),
-    },
-  ]);
+  // ─── Automatically spawn 3–5 “requests” within 5km of each disaster ───
+  const [requests, setRequests] = useState<Request[]>([]);
+  useEffect(() => {
+    if (disasters.length === 0) {
+      setRequests([]);
+      return;
+    }
+
+    const generated: Request[] = [];
+    const R = 6371000; // Earth radius in meters
+    const maxRadius = 5000; // 5 km
+
+    disasters.forEach((d) => {
+      // Random count between 3 and 5
+      const count = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5
+      for (let i = 0; i < count; i++) {
+        // Generate a random point within a circle of radius 5km
+        // using the “random point in circle” technique
+        const r = Math.sqrt(Math.random()) * maxRadius;
+        const theta = Math.random() * 2 * Math.PI;
+        // Δlat in degrees
+        const deltaLat = (r * Math.cos(theta)) / R * (180 / Math.PI);
+        // Δlng in degrees (adjusted by cos of original latitude)
+        const deltaLng =
+          (r * Math.sin(theta)) /
+          (R * Math.cos((d.location.lat * Math.PI) / 180)) *
+          (180 / Math.PI);
+
+        const newLat = d.location.lat + deltaLat;
+        const newLng = d.location.lng + deltaLng;
+
+        generated.push({
+          id: `${d.id}-REQ-${i + 1}`,
+          title: `Supply Request for ${d.name} #${i + 1}`,
+          description: `Auto-generated supply request #${i + 1} within 5 km of ${d.name}.`,
+          type: "Supply",
+          status: "New",
+          priority: "Medium",
+          location: {
+            latitude: newLat,
+            longitude: newLng,
+            address: "",
+          },
+          createdBy: "system",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    });
+
+    setRequests(generated);
+  }, [disasters]);
 
   // ─── Fetch real resources from /api/resources/locations ───
   const [resources, setResources] = useState<Resource[]>([]);
   useEffect(() => {
     (async () => {
       try {
-        // This returns an array of { resource_id, status, category, location: { lat, lng } }
+        // Returns [{ resource_id, status, category, location: { lat, lng } }, …]
         const data = await callApi<
           {
             resource_id: string;
@@ -101,19 +121,19 @@ export default function MapPage({ params }: MapPageProps) {
           }[]
         >("resources/locations");
 
-        // Transform into your Resource type (only the fields MapView needs):
+        // Transform into Resource shape for MapView
         const mapped = data.map((r) => ({
           id: r.resource_id,
-          name: r.category,           // use category as “name”
-          type: r.category,           // also put category into “type”
+          name: r.category,
+          type: r.category,
           status: r.status,
-          quantity: undefined,        // (MapView never reads quantity)
+          quantity: undefined,
           location: {
             latitude: r.location.lat,
             longitude: r.location.lng,
-            address: "",              // (address isn’t provided by this endpoint)
+            address: "",
           },
-          createdAt: new Date(),      // dummy dates—MapView doesn’t need them
+          createdAt: new Date(),
           updatedAt: new Date(),
         }));
 
@@ -247,7 +267,7 @@ export default function MapPage({ params }: MapPageProps) {
               ) : (
                 <div className="relative h-full bg-slate-100 dark:bg-slate-800">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    {/* Pass the fetched disasters, mock requests, and fetched resources to MapView */}
+                    {/* Pass disasters, the autogenerated requests, and fetched resources to MapView */}
                     <MapView
                       disasters={disasters}
                       requests={requests}
