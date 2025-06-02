@@ -238,3 +238,33 @@ def get_request_resources(request_id: str) -> Dict[str, Dict[str, Any]]:
 
     logger.debug(f"Returning result with {len(result)} task(s): {list(result.keys())}")
     return result
+
+
+def list_locations() -> List[Dict[str, Any]]:
+    """
+    Returns a list of all resources that have both location_lat and location_lng fields,
+
+    """
+    db = get_db().collection(COLLECTION)
+    result: List[Dict[str, Any]] = []
+
+    for doc_snap in db.stream():
+        data = doc_snap.to_dict()
+        lat = data.get("location_lat")
+        lng = data.get("location_lng")
+
+        # Only include docs that actually have both lat & lng
+        if lat is None or lng is None:
+            continue
+        logger.debug(data)
+
+        result.append({
+            "status": data.get("status"),
+            "category": data.get("category"),
+            "location": {
+                "lat": lat,
+                "lng": lng
+            }
+        })
+
+    return result
