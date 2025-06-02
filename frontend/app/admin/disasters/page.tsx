@@ -174,6 +174,30 @@ export default function DisasterPage() {
     }
   };
 
+  // Approve an agent-suggested disaster
+  const handleApprove = async (id: string) => {
+    try {
+      await callApi(`disasters/${id}/approve`, "POST");
+      // Refresh both lists
+      await loadAgentDisasters();
+      await loadDisasters();
+    } catch (err) {
+      console.error("Approve failed", err);
+    }
+  };
+
+  // Discard an agent-suggested disaster
+  const handleDiscard = async (id: string) => {
+    try {
+      await callApi(`disasters/${id}/discard`, "DELETE");
+      // Refresh both lists
+      await loadAgentDisasters();
+      await loadDisasters();
+    } catch (err) {
+      console.error("Discard failed", err);
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -337,20 +361,14 @@ export default function DisasterPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            // Placeholder: call approve endpoint later
-                            console.log("Approve", d.id);
-                          }}
+                          onClick={() => handleApprove(d.id)}
                         >
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => {
-                            // Placeholder: call discard endpoint later
-                            console.log("Discard", d.id);
-                          }}
+                          onClick={() => handleDiscard(d.id)}
                         >
                           Discard
                         </Button>
