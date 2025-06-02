@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.core.firebase import verify_token, get_app          # ← updated
-from app.crud.user import create_user, get_user, update_user_availability
-from app.schemas.user import User, UserCreate, AvailabilityUpdate
+from app.core.firebase import verify_token, get_app         
+from app.crud.user import create_user, get_user, update_user_availability, update_user_location
+from app.schemas.user import User, UserCreate, AvailabilityUpdate, Coordinates
 from app.api.deps import (
     _parse_authorization_header,
     get_current_user,
-)
+)    
 
 router = APIRouter(prefix="/users", tags=["auth"])
 
@@ -15,8 +15,8 @@ async def register(
     body: UserCreate,
     token: str = Depends(_parse_authorization_header),
 ):
-    get_app()                                # ensure SDK initialised
-    decoded = verify_token(token)            # ← uses the safe helper
+    get_app()                               
+    decoded = verify_token(token)          
     uid, email = decoded["uid"], decoded["email"]
 
     if get_user(uid):
@@ -91,3 +91,29 @@ async def get_display_name(uid: str):
             detail="User not found"
         )
     return {"display_name": user.display_name}
+
+@router.patch(
+    "/me/location",
+    response_model=User,
+    summary="Set or update your location (affected_individual AND first_responder users)",
+)
+async def set_my_location(
+    coords: Coordinates,
+    current_user: User = Depends(get_current_user),
+):
+    
+    if current_user.role_id not in ("affected_individual", "first_responder"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only affected individuals or first responders may update location"
+        )
+
+    update_user_location(current_user.uid, coords)
+
+    updated = get_user(current_user.uid)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reload user after updating location"
+        )
+    return updated
