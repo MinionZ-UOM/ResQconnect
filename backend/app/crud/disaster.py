@@ -53,7 +53,15 @@ def create_disaster(
 
 def list_disasters() -> List[DisasterResponse]:
     docs = db.collection("disasters").stream()
-    return [DisasterResponse(id=d.id, **d.to_dict()) for d in docs]
+    results = []
+    for d in docs:
+        data = d.to_dict()
+        if data.get("is_agent_suggestion", False):
+            continue
+
+        results.append(DisasterResponse(id=d.id, **data))
+
+    return results
 
 
 def get_disaster(disaster_id: str) -> Optional[DisasterResponse]:
@@ -137,46 +145,6 @@ def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
 
     part_doc = doc_ref.collection("participants").document(uid).get()
     return part_doc.exists
-
-# --- Functions for Volunteers Retrieval ---
-
-# def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
-#     """
-#     Return full participant records for volunteers (role='volunteer') in a disaster,
-#     each with a non-null 'display_name' (falling back to UID).
-#     - Returns None if the disaster does not exist.
-#     """
-#     # 1) Check disaster exists
-#     doc_ref = db.collection("disasters").document(disaster_id)
-#     if not doc_ref.get().exists:
-#         return None
-
-#     volunteers: List[dict] = []
-#     # 2) Fetch all participants with role='volunteer'
-#     for part_snap in (
-#         doc_ref.collection("participants")
-#                .where("role", "==", "volunteer")
-#                .stream()
-#     ):
-#         uid = part_snap.id
-#         pdata = part_snap.to_dict() or {}
-
-#         # 3) Lookup the user document for display_name
-#         user_snap = db.collection("users").document(uid).get()
-#         if user_snap.exists:
-#             # get() returns None if the field is missing or null
-#             display_name = user_snap.get("display_name") or uid
-#         else:
-#             display_name = uid
-
-#         # 4) Build your record
-#         volunteers.append({
-#             "uid": uid,
-#             "display_name": display_name,
-#             **pdata
-#         })
-
-#     return volunteers
 
 
 def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
