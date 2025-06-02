@@ -4,7 +4,7 @@ export function transcribeSpeech(): Promise<string> {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      reject("Speech Recognition API not supported in this browser.");
+      reject(new Error("Speech Recognition API not supported in this browser."));
       return;
     }
 
