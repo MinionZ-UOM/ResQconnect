@@ -12,6 +12,9 @@ from app.crud.resource import get_request_resources
 
 from app.agent.core.manager import Manager
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 router = APIRouter(prefix="/resources", tags=["Resources"])
 
 
@@ -151,35 +154,35 @@ def map_urgency(raw: Any) -> str:
     status_code=status.HTTP_200_OK,
 )
 async def suggest(disaster_id: str) -> Any:
-    print(f"[DEBUG] → suggest() called with disaster_id={disaster_id}")
+    logger.debug(f"suggest() called with disaster_id={disaster_id}")
 
     # 1) Fetch the Disaster
     disaster = get_disaster(disaster_id)
     if not disaster:
-        print(f"[DEBUG] ← Disaster {disaster_id} not found")
+        logger.debug(f"Disaster {disaster_id} not found")
         raise HTTPException(status_code=404, detail="Disaster not found")
-    print(f"[DEBUG] • Found disaster: {disaster_id}")
+    logger.debug(f"Found disaster: {disaster_id}")
 
     # 2) Fetch tasks
     tasks = get_tasks_by_disaster(disaster_id)
-    print(f"[DEBUG] • Retrieved {len(tasks)} tasks: {[t.id for t in tasks]}")
+    logger.debug(f"Retrieved {len(tasks)} tasks: {[t.id for t in tasks]}")
     if not tasks:
-        print(f"[DEBUG] ← No tasks found for disaster {disaster_id}")
+        logger.debug(f"No tasks found for disaster {disaster_id}")
         raise HTTPException(status_code=404, detail="No tasks found for this disaster")
 
     # 3) Filter & format
     filtered_tasks: List[Dict[str, Any]] = []
     for t in tasks:
-        print(f"[DEBUG] → Checking resources for task {t.id}")
+        logger.debug(f"Checking resources for task {t.id}")
         resources_map = get_request_resources(t.id)
         if not resources_map:
-            print(f"[DEBUG]   ↳ No resources for task {t.id}, skipping")
+            logger.debug(f"No resources for task {t.id}, skipping")
             continue
 
         tr = resources_map[t.id]
         raw_reqs = tr.get("resource_requirements", [])
         manpower = tr.get("manpower_requirement")
-        print(f"[DEBUG]   ↳ Found {len(raw_reqs)} resource entries, manpower={manpower!r}")
+        logger.debug(f"Found {len(raw_reqs)} resource entries, manpower={manpower!r}")
 
         # Unwrap your ['key', value] pairs
         formatted_reqs = []
@@ -191,18 +194,18 @@ async def suggest(disaster_id: str) -> Any:
                     "resource_type": rt[1],
                     "quantity":       qty[1],
                 })
-                print(f"[DEBUG]     • resource_type={rt[1]}, quantity={qty[1]}")
+                logger.debug(f"resource_type={rt[1]}, quantity={qty[1]}")
             else:
                 formatted_reqs.append({
                     "resource_type": rt,
                     "quantity":       qty,
                 })
-                print(f"[DEBUG]     • resource_type={rt!r}, quantity={qty!r}")
+                logger.debug(f"resource_type={rt!r}, quantity={qty!r}")
 
         # ── handle missing .urgency safely ──
         raw_urgency = getattr(t, "urgency", None)
         urgency = map_urgency(raw_urgency)
-        print(f"[DEBUG]   ↳ raw_urgency={raw_urgency!r} mapped to '{urgency}'")
+        logger.debug(f"raw_urgency={raw_urgency!r} mapped to '{urgency}'")
 
         filtered_tasks.append({
             "name":                  None,
@@ -212,7 +215,7 @@ async def suggest(disaster_id: str) -> Any:
             "manpower_requirement":  manpower,
         })
 
-    print(f"[DEBUG] ← Built filtered_tasks with {len(filtered_tasks)} entries")
+    logger.debug(f"Built filtered_tasks with {len(filtered_tasks)} entries")
 
     # 4) Build response
     response_content = {
@@ -233,7 +236,7 @@ async def suggest(disaster_id: str) -> Any:
         "task_allocations": None
     }
 
-    print(f"[DEBUG] → Returning response with {len(filtered_tasks)} tasks")
+    logger.debug(f"Returning response with {len(filtered_tasks)} tasks")
 
     ## Now we should pass this to the manager and he should handle the rest 
     manager = Manager()

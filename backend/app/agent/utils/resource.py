@@ -7,6 +7,9 @@ from app.agent.schemas.resource import Resource as AgentResource, ResourceStatus
 from app.agent.schemas.types import ResourceType as AgentResType, DonorType, StatusType
 from app.agent.schemas.common import Coordinates
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 # def get_resources_by_ids_and_type(donor_ids: List[str], resource_type: str) -> List[Resource]:
 #     RESOURCES_FILE = "app/agent/data/resources.json"
 
@@ -30,7 +33,7 @@ def get_resources_by_ids_and_type(
 ) -> List[AgentResource]:
     # call into Firestore-backed CRUD
     backend_resources = fetch_resources(donor_ids, resource_type)
-    print(f'[DEBUG] app/agent/utils/resource fetched backend resources {backend_resources}')
+    logger.debug(f'Fetched backend resources {backend_resources}')
 
     agent_resources: List[AgentResource] = []
     for br in backend_resources:

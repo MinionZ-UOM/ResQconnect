@@ -10,6 +10,9 @@ from app.schemas.disaster import JoinedResponse
 from app.crud.disaster import get_all_volunteers_by_disaster,get_all_volunteer_ids_by_disaster
 from app.schemas.user import User
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 router = APIRouter(prefix="/disasters", tags=["Disasters"])
 
 
@@ -139,7 +142,5 @@ def list_volunteers(disaster_id: str):
     if vols is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
     # Return only display names (all non-null)
-    print(vols)
+    logger.debug(vols)
     return [v["display_name"] for v in vols]
-
-

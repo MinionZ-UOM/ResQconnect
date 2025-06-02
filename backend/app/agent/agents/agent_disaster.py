@@ -8,17 +8,19 @@ from app.agent.utils.disaster import add_disaster, get_disaster_by_id, get_neare
 from app.agent.config.llms_config_loader import LLMConfig
 from app.agent.utils.llm import GroqAgent
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 class AgentDisaster(BaseAgent):
     def handle(self, state: State) -> State:
-        print('Inside disaster agent')
+        logger.info('Inside disaster agent')
 
         # Instantiate the agent and config
         groq_agent = GroqAgent()
         llm_cfg = LLMConfig()
 
         nearest = get_nearest_disasters(request=state.request, top_n=2)
-        print([disaster.dict() for disaster in nearest])
+        logger.debug([disaster.dict() for disaster in nearest])
 
         system_prompt = """
         You are an disaster assigning agent, you will be given with a set of disasters and a request.
@@ -46,7 +48,7 @@ class AgentDisaster(BaseAgent):
             trace_name='disaster_assignment'
         )
 
-        print(f"Disaster ID returned: {disaster_id}")
+        logger.debug(f"Disaster ID returned: {disaster_id}")
 
         if not (disaster_id == None or disaster_id == 'None'): 
             state.request.disaster_id = disaster_id
@@ -75,7 +77,7 @@ class AgentDisaster(BaseAgent):
             )
 
             for key, value in disaster_parsed.dict().items():
-                print(f"{key}: {value}")
+                logger.debug(f"{key}: {value}")
 
             state.request.disaster_id = new_disaster_id
             state.disaster = disaster_parsed

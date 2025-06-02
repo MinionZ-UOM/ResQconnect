@@ -10,6 +10,9 @@ from app.crud.disaster import create_disaster, list_disasters, get_disaster as c
 
 from math import radians, sin, cos, sqrt, atan2
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     # Radius of Earth in kilometers
@@ -82,7 +85,7 @@ def get_disaster_by_id(disaster_id: str) -> Optional[Disaster]:
     )
 
 def get_nearest_disasters(request: Request, top_n: int = 2) -> List[Disaster]:
-    print('Inside get_nearest_disasters tool')
+    logger.info('Inside get_nearest_disasters tool')
     # CRUD to get disasters
     disasters: List[Disaster] = load_disasters()
 
