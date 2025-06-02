@@ -171,7 +171,7 @@ def get_resources_by_ids_and_type(donor_ids: List[str], resource_type: str) -> L
             resources.append(res)
         else:
             logger.warning(f"Skipping resource {doc_snap.id} (could not load)")
-    logger.info(f"Resources fetched" , resources)
+    logger.info(f"Resources fetched: {resources}")
     return resources
 
 
