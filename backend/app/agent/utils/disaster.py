@@ -55,14 +55,21 @@ def load_disasters() -> List[Disaster]:
 
 
 def add_disaster(new_disaster: Disaster):
+    # If disaster_coordinates is None, fall back to (0.0, 0.0)
     loc = new_disaster.disaster_coordinates or Coordinates(lat=0.0, lng=0.0)
+
+    # Use loc.latitude and loc.longitude, but pass keys "lat" and "lng"
     payload = DisasterCreate(
         name=new_disaster.disaster_type,
         description=new_disaster.disaster_summary or "",
-        location=loc,
+        location={
+            "lat": loc.latitude,
+            "lng": loc.longitude,
+        },
         image_urls=[],
     )
-    # mark this one as coming from the agent
+
+    # Mark this one as coming from the agent
     create_disaster(payload, is_agent_suggestion=True)
 
 
@@ -83,6 +90,7 @@ def get_disaster_by_id(disaster_id: str) -> Optional[Disaster]:
         disaster_location=None,
         disaster_summary=d.description,
     )
+
 
 def get_nearest_disasters(request: Request, top_n: int = 2) -> List[Disaster]:
     logger.info('Inside get_nearest_disasters tool')
