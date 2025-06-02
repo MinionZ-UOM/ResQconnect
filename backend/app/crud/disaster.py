@@ -249,3 +249,25 @@ def get_all_volunteer_ids_by_disaster(disaster_id: str) -> Optional[List[str]]:
         .stream()
     volunteer_ids = [v.id for v in volunteer_docs]
     return volunteer_ids
+
+
+def get_disaster_locations() -> List[dict]:
+    """
+    Return a list of all disasters, each with:
+      - id: the disaster document ID
+      - name: the disaster’s name
+      - location: the disaster’s location object (e.g. { latitude, longitude, address })
+
+    If there are no disasters, returns an empty list.
+    """
+    docs = db.collection("disasters").stream()
+    locations_list: List[dict] = []
+    for d in docs:
+        print(f"[DEBUG] Processing disaster: {d}")
+        data = d.to_dict() or {}
+        locations_list.append({
+            "id": d.id,
+            "name": data.get("name"),
+            "location": data.get("location")
+        })
+    return locations_list

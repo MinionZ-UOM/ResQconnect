@@ -55,6 +55,20 @@ def list_available_resources():
 
 
 @router.get(
+    "/locations",
+    response_model=List[Dict[str, Any]]
+)
+def get_all_resource_locations():
+    try:
+        return crud.list_locations()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch all resource locations: {str(e)}"
+        )
+    
+
+@router.get(
     "/{rid}", 
     response_model=Resource, 
     dependencies=[require_perms("resource:read")]

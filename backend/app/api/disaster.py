@@ -39,6 +39,15 @@ def list_disasters():
     return crud.list_disasters()
 
 
+@router.get(
+    "/location",
+    response_model=List[dict],
+    summary="Fetch locations related to each disaster"
+)
+def list_disaster_locations():
+    return crud.get_disaster_locations()
+
+
 @router.get("/{disaster_id}", response_model=DisasterResponse)
 def get_disaster(disaster_id: str):
     d = crud.get_disaster(disaster_id)
@@ -132,3 +141,5 @@ def list_volunteers(disaster_id: str):
     # Return only display names (all non-null)
     print(vols)
     return [v["display_name"] for v in vols]
+
+
