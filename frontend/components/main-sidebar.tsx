@@ -58,16 +58,17 @@ export function MainSidebar({
   const backendKey = uiToBackend[userRole];
   const roleSlug = backendKey.replace(/_/g, "-");
 
-  const baseRoutes = [
-    {
-      title: "Home",
-      icon: Home,
-      href:
-        userRole === "Admin"
-          ? "/admin/dashboard"
-          : `/dashboard/${roleSlug}`,
-    },
-  ];  
+  const baseRoutes =
+  userRole === "Admin"
+    ? []
+    : [
+        {
+          title: "Home",
+          icon: Home,
+          href: `/dashboard/${roleSlug}`,
+        },
+      ];
+
   const roleRoutes = {
     Responder: [
       {
