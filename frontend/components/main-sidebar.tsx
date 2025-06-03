@@ -210,12 +210,8 @@ export function MainSidebar({
             <AvatarImage src={userAvatar || "/placeholder.svg"} alt={userName} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{userName}</span>
-            <span className="text-xs text-muted-foreground capitalize">
-              {userRole}
-            </span>
-          </div>
+          
+          <span className="text-sm font-medium capitalize">{userRole}</span>          
 
           <Button
             variant="ghost"
