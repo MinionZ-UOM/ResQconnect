@@ -154,7 +154,7 @@ export function MainSidebar({
       },
       { title: "Tasks", href: "/admin/tasks", icon: CheckSquare },
       { title: "Resources", href: "/admin/resources", icon: Package },
-      { title: "Alerts", href: "/admin/alerts", icon: Bell },
+      // { title: "Alerts", href: "/admin/alerts", icon: Bell },
     ],
   } as const;
 
