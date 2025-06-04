@@ -38,7 +38,7 @@ $env:LANGFUSE_HOST       = Read-Plain "LANGFUSE_HOST  (e.g. https://your-langfus
 Write-Host "`n=== Launching services in new terminals ==="
 
 # FastAPI (hot-reload)
-Start-Process powershell -ArgumentList "-NoExit","python -m uvicorn app.main:app --reload"
+Start-Process powershell -ArgumentList "-NoExit","python -m uvicorn app.main:app --reload --timeout-keep-alive 30"
 
 # Celery worker
 Start-Process powershell -ArgumentList "-NoExit","celery -A app.celery_config.celery_app worker --loglevel=info --pool=solo"

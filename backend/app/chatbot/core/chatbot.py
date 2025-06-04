@@ -20,6 +20,8 @@ from app.chatbot.utils.summarizer import ChatSummarizer
 
 from langfuse import Langfuse
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 class Chatbot:
     def __init__(self, config_path: str = "app/chatbot/config/mcp_config.yaml"):
@@ -54,6 +56,11 @@ class Chatbot:
         self.graph = builder.compile()
 
     async def ask(self, prompt: str, user: User, chat_history=list):
+        logger.info("Inside Chatbot")
+        logger.debug(f"prompt: {prompt}")
+        logger.debug(f"user: {str(user)}")
+        logger.debug(f"chat_history: {str(chat_history)}")
+
         if self.graph is None:
             raise RuntimeError("Graph not initialized. Call setup() first.")
         
@@ -69,9 +76,11 @@ class Chatbot:
 
         # Run guardrails
         if not await is_prompt_safe(prompt_with_context):
+            logger.debug('unethical prompt')
             return {"message": "Your input was flagged as inappropriate or unethical. Please reformulate your query respectfully."}
 
         if not await is_domain_relevant(prompt_with_context):
+            logger.debug('domain irrelevant prompt')
             return {"message": "This chatbot is specialized for disaster management topics. Please ask something related to disasters, volunteers, or aid coordination."}
 
         
@@ -86,6 +95,8 @@ class Chatbot:
         )
 
         response = await self.graph.ainvoke({"messages": message}, config={"callbacks": [langfuse_handler_trace], "run_name": 'langgraph_resq_chatbot'})
+
+        logger.debug(f'response: {response['messages'][-1].content}')
 
         return {
             'trace': trace.id,

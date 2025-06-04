@@ -3,6 +3,8 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 from langfuse.decorators import langfuse_context, observe
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 class ChatSummarizer:
     def __init__(self):
@@ -29,6 +31,8 @@ class ChatSummarizer:
     @observe(as_type='generation', name='chat_history_summarization')
     def get_contextual_prompt(self, chat_history: List[Dict[str, str]], user_prompt: str) -> str:
         """Generate a relevant context summary from chat history and user prompt."""
+        logger.info('Inside chat summarizer')
+        
         prompt = self.build_prompt(chat_history, user_prompt)
 
         # Log the input and model parameters before calling the LLM
@@ -49,4 +53,5 @@ class ChatSummarizer:
             output=str(response)
         )
 
+        logger.debug(f'contextual prompt : {response.content}')
         return response.content
