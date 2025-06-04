@@ -96,7 +96,7 @@ class Chatbot:
 
         response = await self.graph.ainvoke({"messages": message}, config={"callbacks": [langfuse_handler_trace], "run_name": 'langgraph_resq_chatbot'})
 
-        logger.debug(f'response: {response['messages'][-1].content}')
+        logger.debug(f"response: {response['messages'][-1].content}")
 
         return {
             'trace': trace.id,
