@@ -9,6 +9,9 @@ from app.crud import request as crud
 # Import both the task and the Celery app itself
 from app.celery_config import run_agentic_workflow, celery_app
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 router = APIRouter(prefix="/requests", tags=["Requests"], redirect_slashes=False)
 
 
@@ -32,7 +35,7 @@ async def create_request(
     # Create the request in the database
     request = crud.create(current.uid, payload)
 
-    print(f'request : {request}')
+    logger.debug(f'request : {request}')
 
     # Build the agentic payload
     agent_payload = {

@@ -7,8 +7,16 @@ from app.api.deps import get_current_user
 from app.core.permissions import require_perms as check_permission
 from app.crud import disaster as crud
 from app.schemas.disaster import JoinedResponse
-from app.crud.disaster import get_all_volunteers_by_disaster,get_all_volunteer_ids_by_disaster
+from app.crud.disaster import get_all_volunteers_by_disaster
+from app.crud.disaster import (
+    list_agent_suggested_disasters,
+    approve_disaster,
+    discard_disaster,
+)
 from app.schemas.user import User
+
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/disasters", tags=["Disasters"])
 
@@ -38,6 +46,32 @@ def create_disaster(
 def list_disasters():
     return crud.list_disasters()
 
+
+@router.get(
+    "/location",
+    response_model=List[dict],
+    summary="Fetch locations related to each disaster"
+)
+def list_disaster_locations():
+    return crud.get_disaster_locations()
+
+
+@router.get(
+    "/agent-suggested",
+    response_model=List[DisasterResponse],
+    summary="List only agent-suggested disasters",
+)
+def get_agent_suggested_disasters():
+    """
+    Retrieve all Disaster documents where `is_agent_suggestion == True`.
+    """
+    try:
+        disasters = list_agent_suggested_disasters()
+        return disasters
+    except Exception as e:
+        # In case something goes wrong at the Firestore/query layer
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 @router.get("/{disaster_id}", response_model=DisasterResponse)
 def get_disaster(disaster_id: str):
@@ -130,5 +164,52 @@ def list_volunteers(disaster_id: str):
     if vols is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Disaster not found")
     # Return only display names (all non-null)
-    print(vols)
+    logger.debug(vols)
     return [v["display_name"] for v in vols]
+
+
+@router.post(
+    "/{disaster_id}/approve",
+    response_model=DisasterResponse,
+    summary="Approve an agent-suggested disaster",
+)
+def post_approve_disaster(disaster_id: str):
+    """
+    Approve a Disaster that was suggested by the agent.
+    Sets `is_agent_suggestion = False`. Returns the updated Disaster.
+    """
+    try:
+        updated = approve_disaster(disaster_id)
+        if updated is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disaster {disaster_id} not found",
+            )
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete(
+    "/{disaster_id}/discard",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Discard (delete) an agent-suggested disaster",
+)
+def delete_discard_disaster(disaster_id: str):
+    """
+    Delete a Disaster that was suggested by the agent.
+    """
+    try:
+        success = discard_disaster(disaster_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Disaster {disaster_id} not found",
+            )
+        return
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

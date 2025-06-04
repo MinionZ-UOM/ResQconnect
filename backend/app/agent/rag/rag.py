@@ -5,6 +5,9 @@ from langchain.embeddings import HuggingFaceEmbeddings  # or any other embedding
 from langchain.schema import Document
 from typing import List
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 def build_vectorstores_from_pdfs(source_dir: str = 'app/agent/rag/docs', target_dir: str = 'app/agent/rag/vectorstore'):
     source_path = Path(source_dir)
     target_path = Path(target_dir)
@@ -22,10 +25,10 @@ def build_vectorstores_from_pdfs(source_dir: str = 'app/agent/rag/docs', target_
 
         # Skip if vectorstore already exists
         if collection_path.exists():
-            print(f"Collection '{collection_name}' already exists. Skipping...")
+            logger.info(f"Collection '{collection_name}' already exists. Skipping...")
             continue
 
-        print(f"Processing {pdf_file.name} -> collection '{collection_name}'")
+        logger.info(f"Processing {pdf_file.name} -> collection '{collection_name}'")
 
         # Load and split the PDF
         loader = PyPDFLoader(str(pdf_file))
@@ -36,7 +39,7 @@ def build_vectorstores_from_pdfs(source_dir: str = 'app/agent/rag/docs', target_
 
         # Save to disk
         vectorstore.save_local(str(collection_path))
-        print(f"Collection '{collection_name}' saved at '{collection_path}'")
+        logger.info(f"Collection '{collection_name}' saved at '{collection_path}'")
 
 def retrieve_from_collection(
     collection_name: str,

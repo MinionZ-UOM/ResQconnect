@@ -5,6 +5,8 @@ from app.core.firebase import get_db
 from app.schemas.resource import ResourceCreate, ResourceUpdate, Resource
 from app.schemas.resource import Resource, ResourceType
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 COLLECTION = "resources"
 USER_COLLECTION = "users"
@@ -66,7 +68,7 @@ def list_all() -> List[Resource]:
         try:
             resources.append(Resource(resource_id=s.id, **s.to_dict()))
         except Exception as e:
-            print(f"[WARN] Skipping invalid resource {s.id}: {e}")
+            logger.warning(f"Skipping invalid resource {s.id}: {e}")
     return resources
 
 def list_available() -> List[Resource]:
@@ -76,7 +78,7 @@ def list_available() -> List[Resource]:
         try:
             resources.append(Resource(resource_id=s.id, **s.to_dict()))
         except Exception as e:
-            print(f"[WARN] Skipping invalid available resource {s.id}: {e}")
+            logger.warning(f"Skipping invalid available resource {s.id}: {e}")
     return resources
 
 def patch(rid: str, obj_in: ResourceUpdate) -> Resource:
@@ -168,8 +170,8 @@ def get_resources_by_ids_and_type(donor_ids: List[str], resource_type: str) -> L
         if res:
             resources.append(res)
         else:
-            print(f"[WARN] Skipping resource {doc_snap.id} (could not load)")
-    print(f"[INFO] resources fetched" , resources)
+            logger.warning(f"Skipping resource {doc_snap.id} (could not load)")
+    logger.info(f"Resources fetched: {resources}")
     return resources
 
 
@@ -194,45 +196,75 @@ def get_request_resources(request_id: str) -> Dict[str, Dict[str, Any]]:
       1. Nested under "tasks"
       2. Flat (single-task) schema
     """
-    print(f"[DEBUG] → Fetching request_resources/{request_id}")
+    logger.debug(f"Fetching request_resources/{request_id}")
     db = get_db()
     doc_ref = db.collection("request_resources").document(request_id)
     snap = doc_ref.get()
 
     if not snap.exists:
-        print(f"[DEBUG] ← No document found for request_id={request_id}")
+        logger.debug(f"No document found for request_id={request_id}")
         return {}
 
     data = snap.to_dict() or {}
-    print(f"[DEBUG] ← Document data: {data!r}")
+    logger.debug(f"Document data: {data!r}")
 
     entries = data.get("tasks")
     if entries is None:
-        print("[DEBUG] • 'tasks' field missing – using flat schema fallback")
+        logger.debug("tasks field missing – using flat schema fallback")
         entries = [{
             "task_id": request_id,
             "resource_requirements": data.get("resource_requirements", []),
             "manpower_requirement": data.get("manpower_requirement"),
         }]
     else:
-        print(f"[DEBUG] • Found tasks array with {len(entries)} entries")
+        logger.debug(f"Found tasks array with {len(entries)} entries")
 
     result: Dict[str, Dict[str, Any]] = {}
     for i, entry in enumerate(entries, start=1):
         tid = entry.get("task_id")
-        print(f"[DEBUG]   Entry #{i}: task_id={tid!r}")
+        logger.debug(f"Entry #{i}: task_id={tid!r}")
         if not tid:
-            print(f"[DEBUG]     ↳ skipping – no task_id")
+            logger.debug(f"skipping – no task_id")
             continue
 
         reqs = entry.get("resource_requirements", [])
         mprep = entry.get("manpower_requirement")
-        print(f"[DEBUG]     ↳ requirements={reqs!r}, manpower={mprep!r}")
+        logger.debug(f"requirements={reqs!r}, manpower={mprep!r}")
 
         result[tid] = {
             "resource_requirements": reqs,
             "manpower_requirement": mprep,
         }
 
-    print(f"[DEBUG] ← Returning result with {len(result)} task(s): {list(result.keys())}")
+    logger.debug(f"Returning result with {len(result)} task(s): {list(result.keys())}")
+    return result
+
+
+def list_locations() -> List[Dict[str, Any]]:
+    """
+    Returns a list of all resources that have both location_lat and location_lng fields,
+
+    """
+    db = get_db().collection(COLLECTION)
+    result: List[Dict[str, Any]] = []
+
+    for doc_snap in db.stream():
+        data = doc_snap.to_dict()
+        lat = data.get("location_lat")
+        lng = data.get("location_lng")
+
+        # Only include docs that actually have both lat & lng
+        if lat is None or lng is None:
+            continue
+        logger.debug(data)
+
+        result.append({
+            "status": data.get("status"),
+            "category": data.get("category"),
+            "location": {
+                "lat": lat,
+                "lng": lng
+            }
+        })
+
     return result

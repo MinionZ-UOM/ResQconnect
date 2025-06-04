@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Trash2 } from "lucide-react";
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
+import { Button } from "@/components/ui/button";
 
 type Disaster = {
   id: string;
@@ -17,6 +18,9 @@ type Disaster = {
   created_at: string;
   created_by: string;
   chat_session_id: string;
+  type?: string;
+  severity?: string;
+  affected_count?: number;
 };
 
 type FormState = {
@@ -25,6 +29,9 @@ type FormState = {
   lat: string;
   lng: string;
   images: File[];
+  type: string;
+  severity: string;
+  affectedCount: string;
 };
 
 function Modal({
@@ -87,8 +94,16 @@ async function uploadToImageKit(file: File): Promise<string> {
 export default function DisasterPage() {
   const router = useRouter();
 
+  // State for all disasters
   const [disasters, setDisasters] = useState<Disaster[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // State for agent-suggested disasters
+  const [agentDisasters, setAgentDisasters] = useState<Disaster[]>([]);
+  const [loadingAgent, setLoadingAgent] = useState(true);
+
+  // Tab state: "all" or "agent"
+  const [activeTab, setActiveTab] = useState<"all" | "agent">("all");
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<FormState>({
@@ -97,12 +112,22 @@ export default function DisasterPage() {
     lat: "",
     lng: "",
     images: [],
+    type: "",
+    severity: "",
+    affectedCount: "",
   });
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Confirmation states
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [confirmDiscardId, setConfirmDiscardId] = useState<string | null>(
+    null
+  );
+
+  // Load normal disasters
   const loadDisasters = async () => {
     setLoading(true);
     try {
@@ -115,8 +140,25 @@ export default function DisasterPage() {
     }
   };
 
+  // Load agent-suggested disasters
+  const loadAgentDisasters = async () => {
+    setLoadingAgent(true);
+    try {
+      const data = await callApi<Disaster[]>(
+        "disasters/agent-suggested",
+        "GET"
+      );
+      setAgentDisasters(data);
+    } catch (e) {
+      console.error("Failed to load agent-suggested disasters", e);
+    } finally {
+      setLoadingAgent(false);
+    }
+  };
+
   useEffect(() => {
     loadDisasters();
+    loadAgentDisasters();
   }, []);
 
   // OPTIMISTIC DELETE + IGNORE EMPTY-JSON ERRORS
@@ -128,7 +170,6 @@ export default function DisasterPage() {
     try {
       await callApi(`disasters/${id}`, "DELETE");
     } catch (err: any) {
-      // If the error is JSON parse on empty body, treat as success
       if (err instanceof SyntaxError && /JSON/.test(err.message)) {
         console.warn("Delete returned no JSON, assuming success");
       } else {
@@ -138,8 +179,34 @@ export default function DisasterPage() {
     }
   };
 
+  // Approve an agent-suggested disaster
+  const handleApprove = async (id: string) => {
+    setConfirmApproveId(null);
+    try {
+      await callApi(`disasters/${id}/approve`, "POST");
+      await loadAgentDisasters();
+      await loadDisasters();
+    } catch (err) {
+      console.error("Approve failed", err);
+    }
+  };
+
+  // Discard an agent-suggested disaster
+  const handleDiscard = async (id: string) => {
+    setConfirmDiscardId(null);
+    try {
+      await callApi(`disasters/${id}/discard`, "DELETE");
+      await loadAgentDisasters();
+      await loadDisasters();
+    } catch (err) {
+      console.error("Discard failed", err);
+    }
+  };
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
@@ -169,22 +236,47 @@ export default function DisasterPage() {
       return;
     }
 
+    // Validate affectedCount if provided
+    let affectedCountNum: number | undefined = undefined;
+    if (form.affectedCount) {
+      const ac = parseInt(form.affectedCount, 10);
+      if (isNaN(ac) || ac < 0) {
+        setError("Affected count must be a non-negative integer");
+        setSubmitting(false);
+        return;
+      }
+      affectedCountNum = ac;
+    }
+
     try {
       const image_urls = await Promise.all(
         form.images.map((file) => uploadToImageKit(file))
       );
 
       await callApi("disasters/", "POST", {
-        name:        form.name,
+        name: form.name,
         description: form.description,
-        location:    { lat: latNum, lng: lngNum },
+        location: { lat: latNum, lng: lngNum },
         image_urls,
+        type: form.type,
+        severity: form.severity,
+        affected_count: affectedCountNum,
       });
 
       setShowModal(false);
-      setForm({ name: "", description: "", lat: "", lng: "", images: [] });
+      setForm({
+        name: "",
+        description: "",
+        lat: "",
+        lng: "",
+        images: [],
+        type: "",
+        severity: "",
+        affectedCount: "",
+      });
       setPreviews([]);
-      loadDisasters();
+      await loadDisasters();
+      await loadAgentDisasters();
     } catch (err: any) {
       console.error("Create failed", err);
       setError(err.message || "Create failed");
@@ -195,68 +287,245 @@ export default function DisasterPage() {
 
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
-      <header className="mb-6 ml-8 md:ml-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Disasters</h1>
+      <header className="mb-6 ml-8 md:ml-0 flex flex-wrap justify-between items-center">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+          Disasters
+        </h1>
+        <Button onClick={() => setShowModal(true)}>
+          Register a New Disaster
+        </Button>
       </header>
 
-      {loading ? (
-        <p>Loading…</p>
-      ) : disasters.length === 0 ? (
-        <p>No disasters reported yet.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {disasters.map((d) => {
-            const primaryImage =
-              d.image_urls.find((u) => u?.trim()) || null;
-
-            return (
-              <div
-                key={d.id}
-                className="relative flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden hover:scale-105 transition"
-              >
-                <button
-                  onClick={() => setConfirmDeleteId(d.id)}
-                  className="absolute top-2 right-2 z-10"
-                >
-                  <Trash2 className="w-6 h-6 text-gray-500 hover:text-red-600" />
-                </button>
-                <div className="relative h-48 w-full">
-                  {primaryImage ? (
-                    <Image
-                      src={primaryImage}
-                      alt={d.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="bg-gray-200 w-full h-full flex items-center justify-center text-gray-500">
-                      No Image
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 flex-1 flex flex-col">
-                  <h2 className="text-lg font-semibold text-gray-800">
-                    {d.name}
-                  </h2>
-                  <p className="text-gray-600 mt-2 line-clamp-3">
-                    {d.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="flex justify-center">
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-8 py-4 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
-        >
-          Report a New Disaster
-        </button>
+      {/* Tabs */}
+      <div className="mb-8 border-b">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`py-2 px-4 font-medium ${
+              activeTab === "all"
+                ? "border-b-2 border-primary text-primary"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            All Disasters
+          </button>
+          <button
+            onClick={() => setActiveTab("agent")}
+            className={`py-2 px-4 font-medium ${
+              activeTab === "agent"
+                ? "border-b-2 border-primary text-primary"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            Agent-Suggested
+          </button>
+        </nav>
       </div>
 
+      {/* Content: All Disasters or Agent-Suggested */}
+      {activeTab === "agent" ? (
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Agent-Suggested Disasters
+          </h2>
+          {loadingAgent ? (
+            <p>Loading agent-suggested…</p>
+          ) : agentDisasters.length === 0 ? (
+            <p>No agent-suggested disasters.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {agentDisasters.map((d) => {
+                const primaryImage = d.image_urls.find((u) => u?.trim()) || null;
+                return (
+                  <div
+                    key={d.id}
+                    className="relative flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden hover:scale-105 transition"
+                  >
+                    <div className="relative h-48 w-full">
+                      {primaryImage ? (
+                        <Image
+                          src={primaryImage}
+                          alt={d.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="bg-gray-200 w-full h-full flex items-center justify-center text-gray-500">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {d.name}
+                      </h3>
+                      <p className="text-gray-600 mt-2 line-clamp-3">
+                        {d.description}
+                      </p>
+                      <div className="mt-4 flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConfirmApproveId(d.id)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setConfirmDiscardId(d.id)}
+                        >
+                          Discard
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Confirm Approve Modal */}
+          <Modal
+            open={confirmApproveId !== null}
+            onClose={() => setConfirmApproveId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Confirm Approve</h3>
+              <p className="mb-6">
+                Are you sure you want to approve this disaster?
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmApproveId && handleApprove(confirmApproveId)
+                  }
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg"
+                >
+                  Yes, approve
+                </button>
+                <button
+                  onClick={() => setConfirmApproveId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Confirm Discard Modal */}
+          <Modal
+            open={confirmDiscardId !== null}
+            onClose={() => setConfirmDiscardId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Confirm Discard</h3>
+              <p className="mb-6">
+                Are you sure you want to discard (delete) this disaster?
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmDiscardId && handleDiscard(confirmDiscardId)
+                  }
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                >
+                  Yes, discard
+                </button>
+                <button
+                  onClick={() => setConfirmDiscardId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </section>
+      ) : (
+        <section>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            All Disasters
+          </h2>
+          {loading ? (
+            <p>Loading…</p>
+          ) : disasters.length === 0 ? (
+            <p>No disasters reported yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {disasters.map((d) => {
+                const primaryImage = d.image_urls.find((u) => u?.trim()) || null;
+
+                return (
+                  <div
+                    key={d.id}
+                    className="relative flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden hover:scale-105 transition"
+                  >
+                    <button
+                      onClick={() => setConfirmDeleteId(d.id)}
+                      className="absolute top-2 right-2 z-10"
+                    >
+                      <Trash2 className="w-6 h-6 text-gray-500 hover:text-red-600" />
+                    </button>
+                    <div className="relative h-48 w-full">
+                      {primaryImage ? (
+                        <Image
+                          src={primaryImage}
+                          alt={d.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="bg-gray-200 w-full h-full flex items-center justify-center text-gray-500">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {d.name}
+                      </h3>
+                      <p className="text-gray-600 mt-2 line-clamp-3">
+                        {d.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Confirm Delete Modal for All Disasters */}
+          <Modal
+            open={confirmDeleteId !== null}
+            onClose={() => setConfirmDeleteId(null)}
+          >
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
+              <p className="mb-6">This will permanently delete the incident.</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() =>
+                    confirmDeleteId && handleDelete(confirmDeleteId)
+                  }
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-6 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Modal>
+        </section>
+      )}
+
+      {/* Create Disaster Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <h3 className="text-lg font-medium mb-4">Register New Disaster</h3>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -311,6 +580,57 @@ export default function DisasterPage() {
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1 font-medium">Disaster Type</label>
+              <select
+                name="type"
+                required
+                value={form.type}
+                onChange={handleChange}
+                className="w-full rounded-lg border px-3 py-2"
+              >
+                <option value="" disabled>
+                  Select type…
+                </option>
+                <option value="Flood">Flood</option>
+                <option value="Earthquake">Earthquake</option>
+                <option value="Wildfire">Wildfire</option>
+                <option value="Hurricane">Hurricane</option>
+                <option value="Tornado">Tornado</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Severity</label>
+              <select
+                name="severity"
+                required
+                value={form.severity}
+                onChange={handleChange}
+                className="w-full rounded-lg border px-3 py-2"
+              >
+                <option value="" disabled>
+                  Select severity…
+                </option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Affected Count</label>
+            <input
+              name="affectedCount"
+              type="number"
+              min={0}
+              required
+              value={form.affectedCount}
+              onChange={handleChange}
+              className="w-full rounded-lg border px-3 py-2"
+            />
+          </div>
           <div>
             <label className="block mb-1 font-medium">Images (optional)</label>
             <input
@@ -357,29 +677,6 @@ export default function DisasterPage() {
             </button>
           </div>
         </form>
-      </Modal>
-
-      <Modal open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
-          <p className="mb-6">This will permanently delete the incident.</p>
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={() => {
-                if (confirmDeleteId) handleDelete(confirmDeleteId);
-              }}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg"
-            >
-              Yes, delete
-            </button>
-            <button
-              onClick={() => setConfirmDeleteId(null)}
-              className="px-6 py-2 border rounded-lg"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
       </Modal>
     </div>
   );

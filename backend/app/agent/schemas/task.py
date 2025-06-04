@@ -9,11 +9,11 @@ class ResourceRequirement(BaseModel):
     quantity: int
 
 class Task(BaseModel):
-    name: str
-    description: str
-    urgency: UrgencyLevel
-    resource_requirements: Optional[List[ResourceRequirement]]
-    manpower_requirement: Optional[int]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    urgency: Optional[UrgencyLevel] = None
+    resource_requirements: Optional[List[ResourceRequirement]] = None
+    manpower_requirement: Optional[int] = None
 
 class ResourceAllocation(BaseModel):
     resource: Resource

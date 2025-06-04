@@ -40,9 +40,11 @@ class DonorType(str, Enum):
     ADMIN = "admin"
 
 class StatusType(str, Enum):
-    ACTIVE = 'active'
-    INACTIVE = "inactive"
-    IN_USE = 'in_use'
+    ACTIVE     = 'active'
+    INACTIVE   = 'inactive'
+    IN_USE     = 'in_use'
+    AVAILABLE  = 'available'    # ← new
+    UNAVAILABLE = 'unavailable' # ← if needed
 
 class AcceptedType(str, Enum):
     YES = 'yes'

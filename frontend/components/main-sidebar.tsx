@@ -29,6 +29,7 @@ import {
   Package,
   Settings,
   Users,
+  Cpu,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/AuthProvider";
@@ -52,7 +53,7 @@ export function MainSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const [notifications] = useState(3);
+  const [notifications] = useState();
 
   // derive the slug from backend key, e.g. "first_responder" → "first-responder"
   const backendKey = uiToBackend[userRole];
@@ -154,7 +155,8 @@ export function MainSidebar({
       },
       { title: "Tasks", href: "/admin/tasks", icon: CheckSquare },
       { title: "Resources", href: "/admin/resources", icon: Package },
-      // { title: "Alerts", href: "/admin/alerts", icon: Bell },
+      { title: "Allocation Suggestions", href: "/admin/allocation-suggestions", icon: Cpu },
+      { title: "Alerts", href: "/admin/alerts", icon: Bell },
     ],
   } as const;
 
@@ -209,12 +211,8 @@ export function MainSidebar({
             <AvatarImage src={userAvatar || "/placeholder.svg"} alt={userName} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{userName}</span>
-            <span className="text-xs text-muted-foreground capitalize">
-              {userRole}
-            </span>
-          </div>
+          
+          <span className="text-sm font-medium capitalize">{userRole}</span>          
 
           <Button
             variant="ghost"

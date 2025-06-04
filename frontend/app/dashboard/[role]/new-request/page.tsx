@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Disaster, GeoLocation, RequestType, RequestPriority } from "@/lib/types";
 import { callApi } from "@/lib/api";
 import { imagekit } from "@/lib/imagekit";
+import { enqueueRequest } from "@/lib/offlineQueue";
+import { transcribeSpeech } from "@/lib/speechToText";
 
 interface MediaItem {
   url:     string;
@@ -48,6 +50,9 @@ export default function NewRequestPage() {
 
   // — submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // — NEW: recording state
+  const [isRecording, setIsRecording] = useState(false);
 
   // Fetch disasters
   useEffect(() => {
@@ -145,7 +150,20 @@ export default function NewRequestPage() {
     }
   };
 
-  // Final form submit
+  // Handle voice input
+  const handleVoiceInput = async () => {
+    setIsRecording(true);
+    try {
+      const transcript = await transcribeSpeech();
+      setDescription((prev) => (prev ? prev + " " + transcript : transcript));
+    } catch (err) {
+      console.error("Speech transcription failed:", err);
+      alert("Could not transcribe speech.");
+    } finally {
+      setIsRecording(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
@@ -164,28 +182,54 @@ export default function NewRequestPage() {
       media,
     };
 
-    try {
-      await callApi("requests", "POST", payload);
-      alert("Request submitted!");
-      router.push(
-        `/dashboard/affected/requests${
-          selectedDisaster !== "none" ? `?disasterId=${selectedDisaster}` : ""
-        }`
-      );
-    } catch {
-      alert("Submit failed.");
-      setIsSubmitting(false);
-    }
+    const doSubmit = async () => {
+      // 1) offline? queue it and bail out
+      if (!navigator.onLine) {
+        await enqueueRequest({
+          url: "requests",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert(
+          "You appear to be offline. Your request has been saved locally and will sync once you’re back online."
+        );
+        router.push(`/dashboard/affected-individual`);
+        return;
+      }
+
+      // 2) online → try the real POST
+      try {
+        await callApi("requests", "POST", payload);
+        alert("Request submitted!");
+        router.push(`/dashboard/affected-individual`);
+      } catch {
+        // enqueue on server-error as well
+        await enqueueRequest({
+          url: "requests",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert(
+          "Submit failed; your request is saved locally and will retry when online."
+        );
+        router.push(`/dashboard/affected-individual`);
+      }
+    };
+
+    await doSubmit();
   };
 
   return (
-     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">  
-
+    <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">
       <header className="mb-6 ml-8 md:ml-0 flex flex-col md:flex-row md:justify-between items-start gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">New Request</h1>            
-          </div>
-        </header>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+            New Request
+          </h1>
+        </div>
+      </header>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* — Disaster selector */}
@@ -348,14 +392,38 @@ export default function NewRequestPage() {
           )}
         </div>
 
-        {/* — Submit */}
-        <div>
+        {/* — Submit + Voice Input */}
+        <div className="flex items-center gap-4">
           <button
             type="submit"
             disabled={isSubmitting}
             className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >
             {isSubmitting ? "Submitting…" : "Submit Request"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleVoiceInput}
+            disabled={isRecording}
+            className={`p-2 border rounded ${
+              isRecording ? "bg-red-100" : "bg-gray-100 hover:bg-gray-200"
+            }`}
+            title={isRecording ? "Listening…" : "Add voice input"}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-gray-700"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M9 2a1 1 0 00-1 1v6a1 1 0 102 0V3a1 1 0 00-1-1z" />
+              <path
+                fillRule="evenodd"
+                d="M5 9a4 4 0 008 0V5a4 4 0 00-8 0v4zm4 7a7 7 0 01-7-7 1 1 0 112 0 5 5 0 0010 0 1 1 0 112 0 7 7 0 01-7 7z"
+                clipRule="evenodd"
+              />
+            </svg>
           </button>
         </div>
       </form>

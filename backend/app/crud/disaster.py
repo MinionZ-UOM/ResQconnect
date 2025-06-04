@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from app.core.firebase import get_db
 from app.schemas.disaster import DisasterCreate, DisasterResponse
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 db = get_db()
 
 
@@ -50,7 +53,30 @@ def create_disaster(
 
 def list_disasters() -> List[DisasterResponse]:
     docs = db.collection("disasters").stream()
-    return [DisasterResponse(id=d.id, **d.to_dict()) for d in docs]
+    results = []
+    for d in docs:
+        data = d.to_dict()
+        if data.get("is_agent_suggestion", False):
+            continue
+
+        results.append(DisasterResponse(id=d.id, **data))
+
+    return results
+
+
+def list_agent_suggested_disasters() -> List[DisasterResponse]:
+    """
+    Return only those Disaster documents where is_agent_suggestion == True.
+    """
+    docs = db.collection("disasters").stream()
+    results: List[DisasterResponse] = []
+
+    for d in docs:
+        data = d.to_dict()
+        if data.get("is_agent_suggestion", False):
+            results.append(DisasterResponse(id=d.id, **data))
+
+    return results
 
 
 def get_disaster(disaster_id: str) -> Optional[DisasterResponse]:
@@ -79,7 +105,7 @@ def join_disaster(disaster_id: str, uid: str, role: str) -> Optional[DisasterRes
            .set(
                {"role": role, "joined_at": firestore.SERVER_TIMESTAMP},
                merge=True
-           )
+    )
 
     # 2) also array-union the UID into the root `participants` field
     doc_ref.update({
@@ -135,7 +161,6 @@ def has_joined(disaster_id: str, uid: str) -> Optional[bool]:
     part_doc = doc_ref.collection("participants").document(uid).get()
     return part_doc.exists
 
-# --- Functions for Volunteers Retrieval ---
 
 def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     """
@@ -143,13 +168,16 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     each with a non-null 'display_name' (falling back to UID).
     - Returns None if the disaster does not exist.
     """
-    # 1) Check disaster exists
+    logger.debug(f"Checking if disaster '{disaster_id}' exists.")
     doc_ref = db.collection("disasters").document(disaster_id)
     if not doc_ref.get().exists:
+        logger.debug(f"Disaster '{disaster_id}' does not exist.")
         return None
 
     volunteers: List[dict] = []
-    # 2) Fetch all participants with role='volunteer'
+    logger.debug(
+        f"Fetching participants with role='volunteer' for disaster '{disaster_id}'.")
+
     for part_snap in (
         doc_ref.collection("participants")
                .where("role", "==", "volunteer")
@@ -157,22 +185,37 @@ def get_all_volunteers_by_disaster(disaster_id: str) -> Optional[List[dict]]:
     ):
         uid = part_snap.id
         pdata = part_snap.to_dict() or {}
+        logger.debug(f"Processing participant UID: {uid}")
 
-        # 3) Lookup the user document for display_name
         user_snap = db.collection("users").document(uid).get()
         if user_snap.exists:
-            # get() returns None if the field is missing or null
             display_name = user_snap.get("display_name") or uid
+            location = user_snap.get("location")
+            logger.debug(
+                f"************location of {uid} is {location} **************")
+            if location:
+                location_lat = location.get('lat')
+                location_lng = location.get('lng')
+
+            logger.debug(
+                f"Found user document for UID: {uid}, display_name: {display_name}")
         else:
             display_name = uid
+            logger.debug(
+                f"No user document found for UID: {uid}. Using UID as display_name.")
 
-        # 4) Build your record
         volunteers.append({
             "uid": uid,
             "display_name": display_name,
+            "location_lat": location_lat,
+            "location_lng": location_lng,
             **pdata
         })
+        logger.debug(
+            f"Volunteer record added: UID: {uid}, Display Name: {display_name}")
 
+    logger.debug(f"Total volunteers found: {len(volunteers)}")
+    logger.debug(f"Volunteers found: {volunteers}")
     return volunteers
 
 
@@ -188,7 +231,59 @@ def get_all_volunteer_ids_by_disaster(disaster_id: str) -> Optional[List[str]]:
 
     # Query volunteer participant IDs from sub-collection
     volunteer_docs = doc_ref.collection("participants") \
-                          .where("role", "==", "volunteer") \
-                          .stream()
+        .where("role", "==", "volunteer") \
+        .stream()
     volunteer_ids = [v.id for v in volunteer_docs]
     return volunteer_ids
+
+
+def get_disaster_locations() -> List[dict]:
+    """
+    Return a list of all disasters, each with:
+      - id: the disaster document ID
+      - name: the disaster’s name
+      - location: the disaster’s location object (e.g. { latitude, longitude, address })
+
+    If there are no disasters, returns an empty list.
+    """
+    docs = db.collection("disasters").stream()
+    locations_list: List[dict] = []
+    for d in docs:
+        print(f"[DEBUG] Processing disaster: {d}")
+        data = d.to_dict() or {}
+        locations_list.append({
+            "id": d.id,
+            "name": data.get("name"),
+            "location": data.get("location")
+        })
+    return locations_list
+
+
+def approve_disaster(disaster_id: str) -> Optional[DisasterResponse]:
+    """
+    Mark an agent-suggested Disaster as approved by setting is_agent_suggestion=False.
+    Returns the updated DisasterResponse, or None if not found.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        return None
+
+    # Update the flag
+    doc_ref.update({"is_agent_suggestion": False})
+    updated = doc_ref.get().to_dict()
+    return DisasterResponse(id=disaster_id, **updated)
+
+
+def discard_disaster(disaster_id: str) -> bool:
+    """
+    Discard (delete) an agent-suggested Disaster.
+    Returns True if deletion succeeded, False if document did not exist.
+    """
+    doc_ref = db.collection("disasters").document(disaster_id)
+    snapshot = doc_ref.get()
+    if not snapshot.exists:
+        return False
+
+    doc_ref.delete()
+    return True

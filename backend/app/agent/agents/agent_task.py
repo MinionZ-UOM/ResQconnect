@@ -10,10 +10,12 @@ from app.agent.config.llms_config_loader import LLMConfig
 from app.agent.utils.llm import GroqAgent
 from app.agent.utils.task_resources import save_request_resources
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 class AgentTask(BaseAgent):
     def handle(self, state: State) -> State:
-        print('Inside task agent')
+        logger.info('Inside task agent')
 
         guidelines = ""
         try:
@@ -24,18 +26,18 @@ class AgentTask(BaseAgent):
             )
             guidelines = parse_documents_to_text(docs)
         except Exception as e:
-            print(f'Error doing rag: {e}')
+            logger.error(f'During rag: {e}')
 
         top_k = 3
         observations = load_observations_by_disaster_id(state.request.disaster_id, top_k=top_k)
         
         # Safety check for state.request and state.disaster before accessing .dict()
         if not state.request:
-            print("Error: 'state.request' is None. Cannot proceed with task creation.")
+            logger.error("state.request is None. Cannot proceed with task creation.")
             return state
         
         if not state.disaster:
-            print("Error: 'state.disaster' is None. Cannot proceed with task creation.")
+            logger.error("state.disaster is None. Cannot proceed with task creation.")
             return state
 
         # Proceed with task creation only if state.request and state.disaster are valid
@@ -103,15 +105,16 @@ class AgentTask(BaseAgent):
             save_request_resources(req_id, entries)
 
             state.tasks = tasks
+            
             state.previous_action = Action.task_creation
             state.next_action = None
 
-            print("Tasks saved to DB:", state.tasks)
+            logger.info("Tasks saved to DB:", saved)
 
-            print("Tasks created successfully:", state.tasks)
-            print("State request task creation:", state.request)
+            logger.info("Tasks created successfully:", state.tasks)
+            logger.info("State request task creation:", state.request)
         except Exception as e:
-            print(f"Error during task creation: {e}")
+            logger.error(f"During task creation: {e}")
             # Optionally, you could return the state with an error message or empty tasks
             state.tasks = []
 

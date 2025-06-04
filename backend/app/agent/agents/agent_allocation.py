@@ -8,37 +8,52 @@ from app.agent.utils.volunteer import get_all_volunteer_ids_by_disaster, get_all
 from app.agent.utils.resource import get_resources_by_ids_and_type
 from app.agent.schemas.resource import Resource
 from app.agent.schemas.task import ResourceAllocation, TaskAllocation, VolunteerAllocation
+from app.agent.utils.admin import get_admin_ids
+
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
 
 
 class AgentAllocation(BaseAgent):
     def handle(self, state: State) -> State:
-        print('Inside allocation agent')
+        logger.info('Inside allocation agent')
+        logger.debug(f'Processing disaster ID: {state.disaster.disaster_id}')
 
-        ids = get_all_volunteer_ids_by_disaster(state.disaster.disaster_id)
-        print("Available volunteer IDs:", ids)
+        volunteer_ids = get_all_volunteer_ids_by_disaster(state.disaster.disaster_id)
+        logger.debug(f'Retrieved volunteer IDs: {volunteer_ids}')
 
+        admin_ids = get_admin_ids()
+        logger.debug(f"Retrieved admin IDs: {admin_ids}")
+
+        resource_provider_ids = admin_ids + volunteer_ids
+        
         task_allocations = []
-        assigned_volunteer_ids = set()  # ⬅️ Track already assigned volunteers
+        assigned_volunteer_ids = set()
 
         for task in state.tasks:
+
             resource_allocations = []
             volunteer_allocations = []
 
-            # Convert requirements to dict: {resource_type: quantity}
+            # Convert requirements to dict
             resource_requirements = {
                 req.resource_type.value: req.quantity
                 for req in task.resource_requirements
             }
             manpower_requirements = task.manpower_requirement
-            print("Resource requirements:", resource_requirements)
-            print("Manpower requirement:", manpower_requirements)
+            logger.debug(f"Resource Requirements: {resource_requirements}")
+            logger.debug(f"Manpower Requirement: {manpower_requirements}")
 
             # -------- RESOURCE ALLOCATION --------
             for resource_type, quantity_required in resource_requirements.items():
+                logger.debug(f"Allocating Resource Type: {resource_type} (Quantity Required: {quantity_required})")
+
                 available_resources = [
-                    resource for resource in get_resources_by_ids_and_type(ids, resource_type)
+                    resource for resource in get_resources_by_ids_and_type(resource_provider_ids, resource_type)
                     if resource.status == 'active' and resource.quantity > 0
                 ]
+                logger.debug(f"Available resources found: {len(available_resources)}")
+                logger.debug(f"Available resources found: {available_resources}")
 
                 sorted_resources = sorted(
                     available_resources,
@@ -56,7 +71,8 @@ class AgentAllocation(BaseAgent):
                         break
 
                     allocatable_quantity = min(
-                        resource.quantity, quantity_required - allocated_quantity)
+                        resource.quantity, quantity_required - allocated_quantity
+                    )
                     if allocatable_quantity > 0:
                         partial_resource = Resource(
                             donor_id=resource.donor_id,
@@ -74,15 +90,22 @@ class AgentAllocation(BaseAgent):
                         resource_allocations.append(allocation)
                         allocated_quantity += allocatable_quantity
 
-                print(f"Allocated {allocated_quantity} units of resource '{resource_type}'.")
-                print(resource_allocations)
+                        # logger.debug(f"Allocated {allocatable_quantity} units from resource ID: {resource.id}")
 
-            # -------- MANPOWER (VOLUNTEER) ALLOCATION --------
+                logger.debug(f"Total allocated quantity for {resource_type}: {allocated_quantity}")
+                logger.debug(f"Resource Allocations: {resource_allocations}")
+
+            # -------- VOLUNTEER (MANPOWER) ALLOCATION --------
+            logger.debug(f"Allocating volunteers for manpower requirement: {manpower_requirements}")
+
             all_volunteers = get_all_volunteers_by_disaster(state.disaster.disaster_id)
+            logger.debug(f"All volunteers found: {len(all_volunteers)}")
+
             available_volunteers = [
                 v for v in all_volunteers
-                if v.id in ids and v.status == 'active' and v.id not in assigned_volunteer_ids  # ⬅️ Avoid reassignment
+                if v.id in volunteer_ids and v.status == 'active' and v.id not in assigned_volunteer_ids
             ]
+            logger.debug(f"Available volunteers after filtering: {len(available_volunteers)}")
 
             sorted_volunteers = sorted(
                 available_volunteers,
@@ -100,18 +123,20 @@ class AgentAllocation(BaseAgent):
                     accepted=AcceptedType.PENDING
                 )
                 volunteer_allocations.append(allocation)
-                assigned_volunteer_ids.add(volunteer.id)  # ⬅️ Mark as assigned
+                assigned_volunteer_ids.add(volunteer.id)
+                logger.debug(f"Assigned Volunteer ID: {volunteer.id}")
 
-            print(f"Allocated {len(volunteer_allocations)} volunteers.")
-            print(volunteer_allocations)
+            logger.debug(f"Total volunteers allocated: {len(volunteer_allocations)}")
+            logger.debug(f"Volunteer Allocations: {volunteer_allocations}")
 
-            # Store allocations in the task
+            # Store allocations
             task_allocations.append(TaskAllocation(
                 task=task,
                 resource_allocations=resource_allocations,
                 volunteer_allocations=volunteer_allocations
             ))
+            # logger.debug(f"Finished allocations for Task ID: {task.id}")
 
         state.task_allocations = task_allocations
-        
+        logger.debug("Allocation process complete. Returning updated state.")
         return state

@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AlertTriangle, Camera, MapPin, Upload, X } from "lucide-react";
+import { Upload, MapPin, X, Mic } from "lucide-react";
+
+import { enqueueRequest } from "@/lib/offlineQueue";
+import { transcribeSpeech } from "@/lib/speechToText";
 
 interface MediaItem {
   url:     string;
@@ -61,6 +64,9 @@ export default function VolunteerReportPage() {
   // — submit
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // recording state
+  const [isRecording, setIsRecording] = useState(false);
+
   // 1) Fetch disasters
   useEffect(() => {
     (async () => {
@@ -97,7 +103,6 @@ export default function VolunteerReportPage() {
 
   // 3) Build previews
   useEffect(() => {
-    // revoke old
     previews.forEach((u) => URL.revokeObjectURL(u));
     const newPreviews = selectedFiles.map((f) => URL.createObjectURL(f));
     setPreviews(newPreviews);
@@ -127,7 +132,9 @@ export default function VolunteerReportPage() {
           file,
           fileName: file.name,
           folder: "/observations",
-          token, signature, expire,
+          token,
+          signature,
+          expire,
         });
         setMedia((prev) => [
           ...prev,
@@ -150,13 +157,26 @@ export default function VolunteerReportPage() {
     }
   };
 
+  // — handle voice input for Description
+  const handleVoiceInput = async () => {
+    setIsRecording(true);
+    try {
+      const transcript = await transcribeSpeech();
+      setDescription((prev) => (prev ? prev + " " + transcript : transcript));
+    } catch (err) {
+      console.error("Speech transcription failed:", err);
+      alert("Could not transcribe speech.");
+    } finally {
+      setIsRecording(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
       alert("Location not available.");
       return;
     }
-    // if user hasn't yet uploaded selected files, do it now:
     if (selectedFiles.length) {
       await uploadAll();
     }
@@ -174,48 +194,70 @@ export default function VolunteerReportPage() {
       image_urls: media.map((m) => m.url),
     };
 
-    try {
-      await callApi("observations", "POST", payload);
-      alert("Observation submitted!");
-      router.push(`/dashboard/volunteer`);
-    } catch {
-      alert("Submit failed.");
-      setIsSubmitting(false);
-    }
+    const submitOrQueue = async () => {
+      if (!navigator.onLine) {
+        await enqueueRequest({
+          url: "observations",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert("Offline: saved locally and will sync when back online.");
+        router.push(`/dashboard/volunteer`);
+        return;
+      }
+      try {
+        await callApi("observations", "POST", payload);
+        alert("Observation submitted!");
+        router.push(`/dashboard/volunteer`);
+      } catch {
+        await enqueueRequest({
+          url: "observations",
+          method: "POST",
+          payload,
+          timestamp: Date.now(),
+        });
+        alert("Submit failed: saved locally for retry.");
+        router.push(`/dashboard/volunteer`);
+      }
+    };
+
+    await submitOrQueue();
   };
 
   return (
     <div className="fixed inset-0 py-3 md:left-64 md:right-0 overflow-auto px-4 md:px-6">    
       <header className="mb-6 ml-8 md:ml-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">Report Field Observation</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-200">
+          Report Field Observation
+        </h1>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* — Disaster selector */}
         <div>
           <Label htmlFor="disaster">Disaster Event</Label>
-          {loadingDisasters
-            ? <p>Loading…</p>
-            : fetchError
-            ? <p className="text-red-600">{fetchError}</p>
-            : (
-              <Select
-                id="disaster"
-                value={selectedDisaster}
-                onValueChange={setSelectedDisaster}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select disaster" />
-                </SelectTrigger>
-                <SelectContent>
-                  {disasters.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )
-          }
+          {loadingDisasters ? (
+            <p>Loading…</p>
+          ) : fetchError ? (
+            <p className="text-red-600">{fetchError}</p>
+          ) : (
+            <Select
+              id="disaster"
+              value={selectedDisaster}
+              onValueChange={setSelectedDisaster}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select disaster" />
+              </SelectTrigger>
+              <SelectContent>
+                {disasters.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* — Title & Description */}
@@ -229,7 +271,7 @@ export default function VolunteerReportPage() {
               required
             />
           </div>
-          <div>
+          <div className="relative">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
@@ -294,31 +336,57 @@ export default function VolunteerReportPage() {
           <CardContent>
             <div className="flex items-center gap-2 mb-2">
               <MapPin className="h-5 w-5" />
-              {isLoadingLocation
-                ? <span>Detecting location…</span>
-                : location
-                ? <span>Lat: {location.latitude.toFixed(5)}, Lng: {location.longitude.toFixed(5)}</span>
-                : <span className="text-red-600">{locationError}</span>
-              }
+              {isLoadingLocation ? (
+                <span>Detecting location…</span>
+              ) : location ? (
+                <span>Lat: {location.latitude.toFixed(5)}, Lng: {location.longitude.toFixed(5)}</span>
+              ) : (
+                <span className="text-red-600">{locationError}</span>
+              )}
             </div>
             <Input
-              value={locationError ? "" : `Lat:${location?.latitude.toFixed(5)}, Lng:${location?.longitude.toFixed(5)}`}
+              value={
+                locationError
+                  ? ""
+                  : `Lat:${location?.latitude.toFixed(5)}, Lng:${location?.longitude.toFixed(5)}`
+              }
               readOnly
             />
           </CardContent>
         </Card>
 
-        {/* — Photos */}
+        {/* — Photos and Voice */}
         <Card>
           <CardHeader>
-            <CardTitle>Photos</CardTitle>
-            <CardDescription>Upload images (optional)</CardDescription>
+            <CardTitle>Photos and Voice</CardTitle>
+            <CardDescription>
+              Upload images and voice input (optional)
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <div className="flex gap-2 mb-2">
+              {/* Select Files */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Upload className="mr-2 h-4 w-4" /> Select Files
               </Button>
+
+              {/* Voice Input Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleVoiceInput}
+                disabled={isRecording}
+                className={isRecording ? "bg-red-100" : ""}
+              >
+                <Mic className="mr-2 h-4 w-4" />
+                Voice Input
+              </Button>
+
+              {/* Upload Selected Images */}
               {selectedFiles.length > 0 && (
                 <Button
                   type="button"
@@ -330,6 +398,7 @@ export default function VolunteerReportPage() {
                 </Button>
               )}
             </div>
+
             <input
               type="file"
               multiple
@@ -375,11 +444,7 @@ export default function VolunteerReportPage() {
 
         {/* — Submit */}
         <div className="flex justify-end">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2"
-          >
+          <Button type="submit" disabled={isSubmitting} className="px-6 py-2">
             {isSubmitting ? "Submitting…" : "Submit Observation"}
           </Button>
         </div>

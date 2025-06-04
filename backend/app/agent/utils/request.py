@@ -2,13 +2,16 @@ from app.agent.schemas.intake import TextParserOutput
 from app.agent.utils.llm import GroqAgent
 from app.agent.config.llms_config_loader import LLMConfig
 
+from app.utils.logger import get_logger
+logger = get_logger(__name__)
+
 def stt(speech) -> str:
     # should execute proper stt script
-    print('Inside stt tool')
+    logger.info('Inside stt tool')
     return 'We have been stuck inside the house due to the flood outside'
 
 def analyse_image(image_url) -> str:
-    print('Inside analyse_image tool')
+    logger.info('Inside analyse_image tool')
 
     # Instantiate the agent and config
     groq_agent = GroqAgent()
@@ -34,7 +37,7 @@ def analyse_image(image_url) -> str:
     return summary
 
 def parse_text(prompt) -> TextParserOutput:
-    print('Inside parse_text tool')
+    logger.info('Inside parse_text tool')
 
     # Instantiate the agent and config
     groq_agent = GroqAgent()
@@ -54,6 +57,6 @@ def parse_text(prompt) -> TextParserOutput:
     )
 
     for key, value in parsed_request.dict().items():
-        print(f"{key}: {value}")
+        logger.debug(f"{key}: {value}")
 
     return parsed_request
