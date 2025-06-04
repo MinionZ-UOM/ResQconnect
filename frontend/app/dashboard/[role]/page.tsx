@@ -17,7 +17,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   // Display-friendly title: “First Responder” from “first-responder”
   const roleTitle = slug
-    .split("-")
+    .replace(/[-_]/g, " ") // replace both "-" and "_" with space
+    .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
 
@@ -55,7 +56,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Quick Actions Card */}
             <Card>
               <CardHeader className="pb-2">
