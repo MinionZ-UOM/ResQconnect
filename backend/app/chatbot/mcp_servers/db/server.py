@@ -1,9 +1,12 @@
 from fastmcp import FastMCP
 from schemas.user import User, Coordinates
+from schemas.request import Location, Request
+from schemas.task import Task
 
 from typing import List, Optional
 from firebase_admin import firestore
 from datetime import datetime, timezone
+from google.cloud.firestore import DocumentReference, GeoPoint
 
 from utils.firebase import get_db
 from schemas.disaster import DisasterCreate, DisasterResponse
@@ -109,45 +112,85 @@ def get_all_volunteer_ids_by_disaster(user:User, disaster_id: str) -> Optional[L
         return volunteer_ids
     else:
         return f'User role {user.role} has no permission to this data'
-# @mcp.tool()
-# def get_all_nearby_active_disasters(user_location: Coordinates):
-#     """Returns indices of all nearby active disasters for the user from database"""
-
-#     return ['dis-001', 'dis-002']
 
 
-# @mcp.tool()
-# def get_all_disasters_by_id(user: User, person_id: str):
-#     """Returns all disasters that a specific person participating from database
-#        inputs:
-#             user: authentication token
-#             person_id: the person we needs to list disasters for
-#     """
+@mcp.tool()
+def list_all_latest_requests(user: User):
+    """Lists all latest requests in the database"""
+    if user.role == 'affected_individual':
+        return f'User role {user.role} has no permission to this data'
+    else:
+        requests = []
+        for snap in db.collection("requests").stream():
+            d = snap.to_dict()
+            print(d)
+            gp = d["location"]
+            location = Location(lat=gp.latitude, lng=gp.longitude)
+            d["location"] = location
+            requests.append(Request(id=snap.id, **d))
+        requests.sort(key=lambda r: r.created_at, reverse=True)
+        if len(requests)>5:
+            return requests[:5]
+        else:
+            return requests
 
-#     disasters = {
-#         'user-001': ['flood', 'landslide'],
-#         'user-002': ['tsunami', 'cyclone']
-#     }
+@mcp.tool()
+def list_all_latest_requests_by_disaster_id(user: User, disaster_id: str):
+    """Lists all latest requests for specified disaster id in the database"""
+    if user.role == 'affected_individual':
+        return f'User role {user.role} has no permission to this data'
+    else:
+        requests = []
+        for snap in db.collection("requests").where("disaster_id", "==", disaster_id).stream():
+            d = snap.to_dict()
+            print(d)
+            gp = d["location"]
+            location = Location(lat=gp.latitude, lng=gp.longitude)
+            d["location"] = location
+            requests.append(Request(id=snap.id, **d))
+        requests.sort(key=lambda r: r.created_at, reverse=True)
+        if len(requests)>5:
+            return requests[:5]
+        else:
+            return requests
 
-#     if user.role in ['affected_individual', 'volunteer']:
-#         if person_id == user.id:
-#             return disasters.get(person_id.lower(), f"no disasters for {person_id}")
-#         else:
-#             return 'sorry, you have no permission for other person disasters'
+@mcp.tool()        
+def list_tasks_by_assignee_id(user: User, assigned_to_id: str):
+    """
+    List all disaster related tasks assigned to a particular user.
+    """
+    if user.role == 'affected_individual':
+        return "You don't have access to tasks data"
+    elif user.role == 'volunteer':
+        if user.id == assigned_to_id:
+            qs = db.collection('tasks').where("assigned_to", "==", assigned_to_id).stream()
+            return [Task(id=s.id, **s.to_dict()) for s in qs]
+        else:
+            return "You don't have permission to access other person's tasks"
+    else:
+        qs = db.collection('tasks').where("assigned_to", "==", assigned_to_id).stream()
+        return [Task(id=s.id, **s.to_dict()) for s in qs]
+    
+@mcp.tool()
+def list_tasks_by_disaster_id(user:User, disaster_id: str):
+    """
+    Fetch all tasks whose `disaster_id` field matches the given disaster_id,
+    and return them as fully‐validated Task objects.
+    """
+    if user.role in ['volunteer', 'affected_individual']:
+        return 'You do not have permission to this data'
+    else:
+        query = db.collection("tasks").where("disaster_id", "==", disaster_id)
+        snaps = query.stream()
 
-#     else:
-#         return disasters.get(person_id.lower(), f"no disasters for {person_id}")
-
-
-# @mcp.tool()
-# def get_all_active_volunteers(user: User):
-#     """Returns all active volunteers from database"""
-
-#     if user.role == 'affected_individual':
-#         return 'sorry, you have no permission for accessing volunteers'
-
-#     return ['vol-001', 'vol-002']
-
+        results: List[Task] = []
+        for snap in snaps:
+            data = snap.to_dict() or {}
+            # Snap.id is the Firestore doc ID, so pass it in explicitly
+            task = Task(id=snap.id, **data)
+            results.append(task)
+        return results
+    
 
 if __name__ == "__main__":
     mcp.run(
