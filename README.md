@@ -2,6 +2,12 @@
 - Note that this is an older version of the application and some of the features are yet to be deployed
 - https://resqconnectintellihack.netlify.app/
 
+# Clone the Repository
+
+```bash
+git clone https://github.com/MinionZ-Intellihack/Finals.git
+```
+
 # Backend Setup Guide
 
 ## Prerequisites
@@ -44,7 +50,7 @@
         source env/bin/activate
         ```
 5.  **OPTIONAL Script to start all the services at once**
-    -   You can start all the services required for the backend (celerty worker, MCP servers and FAST API) try running the following script if it fails follow the given steps :
+    -   You can start all the services required for the backend (celery worker, MCP servers and FAST API) try running the following script if it fails follow the given steps :
         ```bash
          .\setup_backend.ps1
         ```
@@ -107,7 +113,7 @@ To set up and run the DB server:
     ```bash
     cd app/chatbot/mcp_servers/db
     ```
--   Before running the server, add the same `secrets` folder containing `firebase_creds.json` file that we used above, inside the `db` folder. path should be `app/chatbot/mcp_servers/db/secrets`
+-   Before running the server, add the same `secrets` folder containing `firebase_cred.json` file that we used above, inside the `db` folder. path should be `app/chatbot/mcp_servers/db/secrets`
 -   Finally, run the server:
     ```bash
     python server.py
@@ -146,9 +152,9 @@ To set up and run the RAG server:
 2.  **Install Dependencies**
     -   Install the required npm packages by running:
         ```bash
-        npm install react@18.2.0 react-dom@18.2.0
+        npm install
         ```
-    -   If you come across any error, try:
+    -   If you encounter any error, try:
         ```bash
         npm install --force
         ```
