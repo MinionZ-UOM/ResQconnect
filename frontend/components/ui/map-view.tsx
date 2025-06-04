@@ -95,6 +95,24 @@ export function MapView({ disasters, requests, resources }: MapViewProps) {
         );
     });
 
+        // Add legend to the map
+    const legend = L.control({ position: "bottomright" });
+
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "info legend");
+      div.innerHTML = `
+        <i style="background-image: url('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png');
+                  background-size: contain; width: 25px; height: 41px; display: inline-block;"></i> Disaster<br/>
+        <i style="background-image: url('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png');
+                  background-size: contain; width: 25px; height: 41px; display: inline-block;"></i> Request<br/>
+        <i style="background-image: url('https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png');
+                  background-size: contain; width: 25px; height: 41px; display: inline-block;"></i> Resource
+      `;
+      return div;
+    };
+
+    legend.addTo(mapInstanceRef.current!);
+
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
