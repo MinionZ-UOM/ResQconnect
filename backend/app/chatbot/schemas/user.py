@@ -6,5 +6,6 @@ class Coordinates( BaseModel):
 
 class User(BaseModel):
     id: str
+    name: str
     role: str
     location: Coordinates

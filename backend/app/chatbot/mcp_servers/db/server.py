@@ -93,25 +93,37 @@ def get_disaster_locations() -> List[dict]:
 
 
 @mcp.tool()
-def get_all_volunteer_ids_by_disaster(user:User, disaster_id: str) -> Optional[List[str]] | str:
+def get_all_volunteer_ids_by_disaster_name(user: User, disaster_name: str) -> Optional[List[str]] | str:
     """
-    Return list of UIDs for volunteers (role='volunteer') in a disaster.
+    Return list of UIDs for volunteers (role='volunteer') in a disaster by its name.
     - Returns None if the disaster does not exist.
     """
     if user.role in ['first_responder', 'admin']:
-        doc_ref = db.collection("disasters").document(disaster_id)
-        snap = doc_ref.get()
-        if not snap.exists:
+        # Step 1: Fetch disaster ID from disaster name
+        disaster_query = db.collection("disasters").where("name", "==", disaster_name).limit(1)
+        disaster_snaps = disaster_query.stream()
+        disaster_id = None
+        for disaster_snap in disaster_snaps:
+            disaster_data = disaster_snap.to_dict()
+            if disaster_data:
+                disaster_id = disaster_snap.id  # Assuming Firestore doc ID is the disaster ID
+            break
+
+        if not disaster_id:
             return None
 
-        # Query volunteer participant IDs from sub-collection
-        volunteer_docs = doc_ref.collection("participants") \
-            .where("role", "==", "volunteer") \
+        # Step 2: Query volunteer participant IDs from sub-collection
+        doc_ref = db.collection("disasters").document(disaster_id)
+        volunteer_docs = (
+            doc_ref.collection("participants")
+            .where("role", "==", "volunteer")
             .stream()
+        )
         volunteer_ids = [v.id for v in volunteer_docs]
         return volunteer_ids
     else:
-        return f'User role {user.role} has no permission to this data'
+        return f'User role {user.role} has no permission to this data'
+
 
 
 @mcp.tool()
@@ -135,11 +147,27 @@ def list_all_latest_requests(user: User):
             return requests
 
 @mcp.tool()
-def list_all_latest_requests_by_disaster_id(user: User, disaster_id: str):
-    """Lists all latest requests for specified disaster id in the database"""
+def list_all_latest_requests_by_disaster_name(user: User, disaster_name: str):
+    """
+    Lists all latest requests for the specified disaster name in the database.
+    """
     if user.role == 'affected_individual':
-        return f'User role {user.role} has no permission to this data'
+        return f'User role {user.role} has no permission to this data'
     else:
+        # Step 1: Fetch disaster ID from disaster name
+        disaster_query = db.collection("disasters").where("name", "==", disaster_name).limit(1)
+        disaster_snaps = disaster_query.stream()
+        disaster_id = None
+        for disaster_snap in disaster_snaps:
+            disaster_data = disaster_snap.to_dict()
+            if disaster_data:
+                disaster_id = disaster_snap.id  # Assuming Firestore doc ID is the disaster ID
+            break
+        
+        if not disaster_id:
+            return f"No disaster found with name: {disaster_name}"
+        
+        # Step 2: Fetch requests using disaster_id
         requests = []
         for snap in db.collection("requests").where("disaster_id", "==", disaster_id).stream():
             d = snap.to_dict()
@@ -148,48 +176,71 @@ def list_all_latest_requests_by_disaster_id(user: User, disaster_id: str):
             location = Location(lat=gp.latitude, lng=gp.longitude)
             d["location"] = location
             requests.append(Request(id=snap.id, **d))
+
+        
+        # Sort and limit to 5
         requests.sort(key=lambda r: r.created_at, reverse=True)
-        if len(requests)>5:
-            return requests[:5]
-        else:
-            return requests
+        requests = [{'description':request.description, 'location':request.location} for request in requests]
+        return requests[:5] if len(requests) > 5 else requests
+
 
 @mcp.tool()        
-def list_tasks_by_assignee_id(user: User, assigned_to_id: str):
+def list_tasks_by_assignee_name(user: User, assigned_to_name: str):
     """
     List all disaster related tasks assigned to a particular user.
     """
     if user.role == 'affected_individual':
         return "You don't have access to tasks data"
     elif user.role == 'volunteer':
-        if user.id == assigned_to_id:
-            qs = db.collection('tasks').where("assigned_to", "==", assigned_to_id).stream()
-            return [Task(id=s.id, **s.to_dict()) for s in qs]
+        if user.name == assigned_to_name:
+            qs = db.collection('tasks').where("assigned_to", "==", assigned_to_name).stream()
+            tasks = [Task(id=s.id, **s.to_dict()) for s in qs]
+            return [task.instructions for task in tasks]
         else:
             return "You don't have permission to access other person's tasks"
     else:
-        qs = db.collection('tasks').where("assigned_to", "==", assigned_to_id).stream()
-        return [Task(id=s.id, **s.to_dict()) for s in qs]
+        qs = db.collection('tasks').where("assigned_to", "==", assigned_to_name).stream()
+        tasks = [Task(id=s.id, **s.to_dict()) for s in qs]
+        return [task.instructions for task in tasks]
     
 @mcp.tool()
-def list_tasks_by_disaster_id(user:User, disaster_id: str):
+def list_tasks_by_disaster_name(user: User, disaster_name: str):
     """
-    Fetch all tasks whose `disaster_id` field matches the given disaster_id,
-    and return them as fully‐validated Task objects.
+    Fetch all tasks whose `disaster_id` matches the ID of the given disaster_name,
+    and return them as fully-validated Task objects.
     """
     if user.role in ['volunteer', 'affected_individual']:
-        return 'You do not have permission to this data'
+        return 'You do not have permission to access this data'
     else:
-        query = db.collection("tasks").where("disaster_id", "==", disaster_id)
+        # Step 1: Fetch disaster ID from disaster name
+        disaster_query = db.collection("disasters").where("name", "==", disaster_name).limit(1)
+        disaster_snaps = disaster_query.stream()
+        disaster_id = None
+        for disaster_snap in disaster_snaps:
+            disaster_data = disaster_snap.to_dict()
+            if disaster_data:
+                disaster_id = disaster_snap.id  # Assuming Firestore doc ID is the disaster ID
+            break
+        
+        if not disaster_id:
+            return f"No disaster found with name: {disaster_name}"
+        
+        # Step 2: Fetch tasks using disaster_id
+        query = (
+            db.collection("tasks")
+            .where("disaster_id", "==", disaster_id)
+            .where("is_authorized", "==", True)
+        )
         snaps = query.stream()
 
         results: List[Task] = []
         for snap in snaps:
             data = snap.to_dict() or {}
-            # Snap.id is the Firestore doc ID, so pass it in explicitly
             task = Task(id=snap.id, **data)
             results.append(task)
-        return results
+        returning = [{'instructions':task.instructions, 'assigned_to':task.assigned_to, 'status':task.status} for task in results]
+        print(returning)
+        return returning
     
 
 if __name__ == "__main__":
