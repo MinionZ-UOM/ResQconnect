@@ -5,7 +5,7 @@
 # Clone the Repository
 
 ```bash
-git clone https://github.com/MinionZ-Intellihack/Finals.git
+git clone https://github.com/MinionZ-UOM/ResQconnect.git
 ```
 
 # Backend Setup Guide
